@@ -152,6 +152,7 @@ export class GameScene extends Phaser.Scene {
         // Update UI
         this.updateUI();
         this.updateSkillUI();
+        this.updateItemUI();
         this.updateCamera();
         
         // Update character stats display
@@ -380,7 +381,8 @@ export class GameScene extends Phaser.Scene {
                 .setInteractive()
                 .on('pointerover', (pointer: Phaser.Input.Pointer) => {
                     const text = `${item.name}\n${item.description}`;
-                    this.showSmartTooltip(pointer.x, pointer.y, text, true);
+                    // Use the input position for UI tooltips
+                    this.showSmartTooltip(this.input.x, this.input.y, text, true);
                 })
                 .on('pointerout', () => this.hideTooltip());
             this.itemUI.add(itemSprite);
@@ -424,7 +426,7 @@ export class GameScene extends Phaser.Scene {
     private rKey!: Phaser.Input.Keyboard.Key;
     private fKey!: Phaser.Input.Keyboard.Key;
     private shiftKey!: Phaser.Input.Keyboard.Key; // Left Shift for dash
-    private spaceKey!: Phaser.Input.Keyboard.Key; // Spacebar for pause
+    private escKey!: Phaser.Input.Keyboard.Key; // ESC for pause
 
     private setupInput() {
         if (!this.input.keyboard) {
@@ -449,6 +451,7 @@ export class GameScene extends Phaser.Scene {
         this.rKey = this.input.keyboard.addKey('R');
         this.fKey = this.input.keyboard.addKey('F');
         this.shiftKey = this.input.keyboard.addKey('SHIFT');
+        this.escKey = this.input.keyboard.addKey('ESC');
         
         this.qKey.on('down', () => {
             this.player.useQSkill();
@@ -469,6 +472,10 @@ export class GameScene extends Phaser.Scene {
         this.shiftKey.on('down', () => {
             this.player.useDashSkill();
         });
+
+        this.escKey.on('down', () => {
+            this.togglePause();
+        });
     }
 
     public addXP(amount: number) {
@@ -484,7 +491,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     private handleKeyDown = (event: KeyboardEvent) => {
-        if (event.code === 'Space') {
+        if (event.code === 'Escape') {
             this.togglePause();
         }
     };
@@ -1024,14 +1031,91 @@ export class GameScene extends Phaser.Scene {
 
         const overlay = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.5).setOrigin(0);
 
-        const pauseText = this.add.text(screenWidth / 2, screenHeight / 2, 'Game Paused', {
+        const pauseText = this.add.text(screenWidth / 2, screenHeight * 0.4, 'Game Paused', {
             fontSize: '48px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
         }).setOrigin(0.5);
 
-        this.pauseContainer = this.add.container(0, 0, [overlay, pauseText]);
-        this.pauseContainer.setScrollFactor(0).setDepth(4000).setVisible(false); // Higher depth
+        // Resume button
+        const resumeRect = this.add.rectangle(0, 0, 200, 60, 0x00ff88);
+        const resumeText = this.add.text(0, 0, 'Resume', {
+            fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        const resumeButton = this.add.container(screenWidth / 2, screenHeight * 0.6, [resumeRect, resumeText]);
+
+        // Return to menu button
+        const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
+        const menuText = this.add.text(0, 0, 'Main Menu', {
+            fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        const menuButton = this.add.container(screenWidth / 2, screenHeight * 0.75, [menuRect, menuText]);
+
+        // Make buttons interactive
+        resumeButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
+        menuButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
+
+        // Button hover effects
+        resumeButton.on('pointerover', () => {
+            resumeButton.setScale(1.1);
+            resumeRect.setFillStyle(0x00ffaa);
+        });
+        resumeButton.on('pointerout', () => {
+            resumeButton.setScale(1);
+            resumeRect.setFillStyle(0x00ff88);
+        });
+
+        menuButton.on('pointerover', () => {
+            menuButton.setScale(1.1);
+            menuRect.setFillStyle(0xff6666);
+        });
+        menuButton.on('pointerout', () => {
+            menuButton.setScale(1);
+            menuRect.setFillStyle(0xff4444);
+        });
+
+        // Button actions
+        resumeButton.on('pointerdown', () => {
+            this.togglePause();
+        });
+
+        menuButton.on('pointerdown', () => {
+            this.scene.start('StartScene');
+        });
+
+        // Also add input handling to the scene for when game is paused
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            if (this.scene.isPaused() && this.pauseContainer.visible) {
+                // Check if click is on resume button
+                const resumeBounds = new Phaser.Geom.Rectangle(
+                    screenWidth / 2 - 100, 
+                    screenHeight * 0.6 - 30, 
+                    200, 
+                    60
+                );
+                const menuBounds = new Phaser.Geom.Rectangle(
+                    screenWidth / 2 - 100, 
+                    screenHeight * 0.75 - 30, 
+                    200, 
+                    60
+                );
+                
+                if (resumeBounds.contains(pointer.x, pointer.y)) {
+                    this.togglePause();
+                } else if (menuBounds.contains(pointer.x, pointer.y)) {
+                    this.scene.start('StartScene');
+                }
+            }
+        });
+
+        this.pauseContainer = this.add.container(0, 0, [overlay, pauseText, resumeButton, menuButton]);
+        this.pauseContainer.setScrollFactor(0).setDepth(4000).setVisible(false).setInteractive(); // Higher depth and always interactive
     }
     
     private togglePause() {

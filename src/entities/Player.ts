@@ -285,6 +285,21 @@ export class Player extends Phaser.GameObjects.Container {
         const mouseX = mousePointer.worldX;
         const mouseY = mousePointer.worldY;
         
+        // Check if mouse is over an enemy for homing
+        const enemies = gameScene.getEnemies().getChildren();
+        let isHoming = false;
+        
+        enemies.forEach((enemy: any) => {
+            const dx = mouseX - enemy.x;
+            const dy = mouseY - enemy.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // If mouse is within enemy bounds (assuming enemy size is roughly 40x40)
+            if (distance < 30) {
+                isHoming = true;
+            }
+        });
+        
         // Calculate angle to mouse
         const dx = mouseX - this.x;
         const dy = mouseY - this.y;
@@ -322,7 +337,7 @@ export class Player extends Phaser.GameObjects.Container {
                     this.projectileSpeed,
                     angle,
                     this.piercing,
-                    false,
+                    isHoming, // Enable homing if mouse is over enemy
                     isCritical
                 );
                 gameScene.getProjectiles().add(projectile);
@@ -332,13 +347,13 @@ export class Player extends Phaser.GameObjects.Container {
             this.shotCounter++;
             const isComboShot = this.hasAdvancedCombo ? this.shotCounter % 2 === 0 : (this.hasComboMaster && this.shotCounter % 3 === 0);
             
-            this.performBurstAttack(scene, gameScene, angle, isComboShot);
+            this.performBurstAttack(scene, gameScene, angle, isComboShot, isHoming);
         }
         
         // Combo system disabled for now
     }
 
-    private performSpreadAttack(scene: Phaser.Scene, gameScene: any, baseAngle: number, isComboShot: boolean = false) {
+    private performSpreadAttack(scene: Phaser.Scene, gameScene: any, baseAngle: number, isComboShot: boolean = false, isHoming: boolean = false) {
         for (let i = 0; i < this.projectileCount; i++) {
             // Spread projectiles in an arc
             const spreadAngle = Math.PI / 4; // 45 degrees total spread
@@ -372,7 +387,7 @@ export class Player extends Phaser.GameObjects.Container {
                     this.projectileSpeed,
                     projectileAngle,
                     this.piercing,
-                    false,
+                    isHoming, // Enable homing if mouse is over enemy
                     isCritical
                 );
             }
@@ -381,7 +396,7 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
-    private performBurstAttack(scene: Phaser.Scene, gameScene: any, angle: number, isComboShot: boolean = false) {
+    private performBurstAttack(scene: Phaser.Scene, gameScene: any, angle: number, isComboShot: boolean = false, isHoming: boolean = false) {
         for (let i = 0; i < this.projectileCount; i++) {
             scene.time.delayedCall(i * 50, () => { // 50ms delay between shots
                 let projectile;
@@ -409,7 +424,7 @@ export class Player extends Phaser.GameObjects.Container {
                         this.projectileSpeed,
                         angle,
                         this.piercing,
-                        false,
+                        isHoming, // Enable homing if mouse is over enemy
                         isCritical
                     );
                 }

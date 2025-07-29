@@ -35,7 +35,7 @@ export class Item extends Phaser.GameObjects.Container {
 
     private hideTooltip() {
         const gameScene = this.scene as any;
-        gameScene.hideItemTooltip();
+        gameScene.hideTooltip();
     }
 
     public applyEffect(player: Player) {

@@ -41,22 +41,64 @@ export class UIScene extends Phaser.Scene {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        const title = this.add.text(screenWidth / 2, screenHeight * 0.4, 'GAME OVER', {
+        const title = this.add.text(screenWidth / 2, screenHeight * 0.3, 'GAME OVER', {
             fontSize: '72px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ff0000',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(2001);
 
-        const restartText = this.add.text(screenWidth / 2, screenHeight * 0.6, 'Click to restart', {
-            fontSize: '36px',
+        // Restart button
+        const restartRect = this.add.rectangle(0, 0, 200, 60, 0x00ff88);
+        const restartText = this.add.text(0, 0, 'Restart', {
+            fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff'
-        }).setOrigin(0.5).setDepth(2001);
+            color: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        const restartButton = this.add.container(screenWidth / 2, screenHeight * 0.5, [restartRect, restartText]).setDepth(2002);
 
-        this.input.once('pointerdown', () => {
+        // Main menu button
+        const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
+        const menuText = this.add.text(0, 0, 'Main Menu', {
+            fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        const menuButton = this.add.container(screenWidth / 2, screenHeight * 0.65, [menuRect, menuText]).setDepth(2002);
+
+        // Make buttons interactive
+        restartButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
+        menuButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
+
+        // Button hover effects
+        restartButton.on('pointerover', () => {
+            restartButton.setScale(1.1);
+            restartRect.setFillStyle(0x00ffaa);
+        });
+        restartButton.on('pointerout', () => {
+            restartButton.setScale(1);
+            restartRect.setFillStyle(0x00ff88);
+        });
+
+        menuButton.on('pointerover', () => {
+            menuButton.setScale(1.1);
+            menuRect.setFillStyle(0xff6666);
+        });
+        menuButton.on('pointerout', () => {
+            menuButton.setScale(1);
+            menuRect.setFillStyle(0xff4444);
+        });
+
+        // Button actions
+        restartButton.on('pointerdown', () => {
             this.scene.get('GameScene').scene.restart();
             this.scene.stop();
+        });
+
+        menuButton.on('pointerdown', () => {
+            this.scene.start('StartScene');
         });
     }
 

@@ -1,4 +1,4 @@
-# Kyu Roguelike
+# Volvox Arena
 
 A fast-paced web-based roguelike action game built with Phaser.js and TypeScript. Fight waves of enemies, level up, and evolve your attacks with powerful upgrades!
 
