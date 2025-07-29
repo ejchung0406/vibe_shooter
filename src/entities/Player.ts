@@ -261,9 +261,9 @@ export class Player extends Phaser.GameObjects.Container {
                     this.attackDamage * 2, // Double damage
                     this.projectileSpeed,
                     angle,
-                    this.piercing,
                     this.explosiveDamageMultiplier,
-                    this.explosiveBossDamageMultiplier
+                    this.explosiveBossDamageMultiplier,
+                    this.piercing
                 );
                 gameScene.getProjectiles().add(projectile);
             } else {
@@ -309,6 +309,8 @@ export class Player extends Phaser.GameObjects.Container {
                     this.attackDamage * 2,
                     this.projectileSpeed,
                     projectileAngle,
+                    this.explosiveDamageMultiplier,
+                    this.explosiveBossDamageMultiplier,
                     this.piercing
                 );
             } else {
@@ -340,6 +342,8 @@ export class Player extends Phaser.GameObjects.Container {
                         this.attackDamage * 2,
                         this.projectileSpeed,
                         angle,
+                        this.explosiveDamageMultiplier,
+                        this.explosiveBossDamageMultiplier,
                         this.piercing
                     );
                 } else {

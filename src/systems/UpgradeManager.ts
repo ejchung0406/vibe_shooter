@@ -5,6 +5,7 @@ export interface Upgrade {
     name: string;
     description: string;
     rarity: 'common' | 'rare' | 'epic' | 'legendary';
+    dependencies?: string[];
     effect: (player: any) => void;
 }
 
@@ -120,6 +121,7 @@ export class UpgradeManager {
                 name: "Wombo Combo Master",
                 description: "Explosive shot deals 1.5x damage to enemies",
                 rarity: "epic",
+                dependencies: ["combo_master"],
                 effect: (player: any) => {
                     player.setExplosiveDamageMultiplier(1.5);
                 }
@@ -129,6 +131,7 @@ export class UpgradeManager {
                 name: "Combo Killer",
                 description: "Explosive shot deals 5x damage to bosses",
                 rarity: "legendary",
+                dependencies: ["combo_master"],
                 effect: (player: any) => {
                     player.setExplosiveBossDamageMultiplier(5);
                 }
@@ -137,7 +140,16 @@ export class UpgradeManager {
     }
 
     public getRandomUpgrades(count: number): Upgrade[] {
-        const shuffled = [...this.availableUpgrades].sort(() => 0.5 - Math.random());
+        const available = this.availableUpgrades.filter(upgrade => {
+            if (!upgrade.dependencies) {
+                return true;
+            }
+            return upgrade.dependencies.every(dep => 
+                this.appliedUpgrades.some(applied => applied.id === dep)
+            );
+        });
+
+        const shuffled = [...available].sort(() => 0.5 - Math.random());
         return shuffled.slice(0, Math.min(count, shuffled.length));
     }
 

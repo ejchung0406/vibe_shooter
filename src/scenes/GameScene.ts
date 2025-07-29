@@ -522,9 +522,10 @@ export class GameScene extends Phaser.Scene {
         // Position stats UI below and to the left of the level text
         const levelTextX = screenWidth / 2 - 220;
         const levelTextY = screenHeight - 60;
-        const statsX = levelTextX - 420; // Move 300 pixels more to the left (was -120, now -420)
-        const statsY = levelTextY - 130; // Move 50 pixels down (was -180, now -130)
-        
+        const statsX = levelTextX - 420; 
+        const statsY = levelTextY - 170; 
+        /* (0, 0) is the top left corner of the screen */
+
         // Create stats container positioned relative to level text
         this.statsContainer = this.add.container(statsX, statsY).setScrollFactor(0).setDepth(1000);
         

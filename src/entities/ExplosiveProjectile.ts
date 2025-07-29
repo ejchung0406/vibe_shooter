@@ -20,9 +20,9 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         damage: number,
         speed: number,
         angle: number,
-        piercing: boolean = false,
-        explosiveDamageMultiplier: number = 1,
-        explosiveBossDamageMultiplier: number = 1
+        explosiveDamageMultiplier: number,
+        explosiveBossDamageMultiplier: number,
+        piercing: boolean = false
     ) {
         super(scene, x, y);
         
@@ -142,7 +142,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
                 if (distance <= this.explosionRadius) {
                     // Deal damage to enemy
                     let damage = this.damage * this.explosiveDamageMultiplier;
-                    if (enemy.isBossEnemy) { // Corrected: Check if the method exists
+                    if (enemy.isBossEnemy()) { 
                         damage *= this.explosiveBossDamageMultiplier;
                     }
                     enemy.takeDamage(damage);
