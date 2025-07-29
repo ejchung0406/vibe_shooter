@@ -10,6 +10,7 @@ export class Projectile extends Phaser.GameObjects.Container {
     private homing: boolean = false;
     private lifetime: number = 3000; // 3 seconds
     private age: number = 0;
+    private isCritical: boolean = false;
     
     // Track which enemies this projectile has already hit (for piercing)
     private hitEnemies: Set<any> = new Set();
@@ -22,7 +23,8 @@ export class Projectile extends Phaser.GameObjects.Container {
         speed: number,
         angle: number,
         piercing: boolean = false,
-        homing: boolean = false
+        homing: boolean = false,
+        isCritical: boolean = false
     ) {
         super(scene, x, y);
         
@@ -30,6 +32,7 @@ export class Projectile extends Phaser.GameObjects.Container {
         this.projectileSpeed = speed;
         this.piercing = piercing;
         this.homing = homing;
+        this.isCritical = isCritical;
         
         // Create projectile sprite
         this.sprite = scene.add.rectangle(0, 0, 8, 8, 0xffff00);
@@ -145,7 +148,7 @@ export class Projectile extends Phaser.GameObjects.Container {
         this.hitEnemies.add(enemy);
         
         // Deal damage to enemy
-        enemy.takeDamage(this.damage);
+        enemy.takeDamage(this.damage, this.isCritical);
         
         // Add knockback effect using physics velocity instead of teleportation
         const dx = enemy.x - this.x;

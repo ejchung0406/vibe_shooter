@@ -49,6 +49,14 @@ export class GameScene extends Phaser.Scene {
         super({ key: 'GameScene' });
     }
 
+    init() {
+        // Reset game state
+        this.gameTime = 0;
+        this.playerLevel = 1;
+        this.playerXP = 0;
+        this.xpToNextLevel = 100;
+    }
+
     create() {
         // Enable physics debugging
         // this.physics.world.createDebugGraphic();
@@ -211,7 +219,6 @@ export class GameScene extends Phaser.Scene {
         this.createSkillUI();
         
         // Create character stats UI
-        this.createCharacterStatsUI();
         this.createPauseUI();
     }
 
@@ -292,7 +299,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     public addXP(amount: number) {
-        this.playerXP += amount;
+        this.playerXP += amount * this.player.getXPMultiplier();
         
         if (this.playerXP >= this.xpToNextLevel) {
             this.levelUp();
@@ -320,7 +327,8 @@ export class GameScene extends Phaser.Scene {
         // Trigger level up UI
         this.scene.launch('UIScene', { 
             level: this.playerLevel,
-            upgradeManager: this.upgradeManager
+            upgradeManager: this.upgradeManager,
+            isGameOver: false
         });
         
         // Pause the game
@@ -384,6 +392,11 @@ export class GameScene extends Phaser.Scene {
         const gridSize = 100;
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
+
+        // Ensure the texture doesn't already exist
+        if (this.textures.exists('grid')) {
+            this.textures.remove('grid');
+        }
 
         // Create an in-memory texture for the grid pattern
         const gridTexture = this.textures.createCanvas('grid', gridSize, gridSize);
@@ -666,21 +679,11 @@ export class GameScene extends Phaser.Scene {
         // Stop the game
         this.scene.pause();
         
-        // Show game over screen
-        const gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2, 'GAME OVER', {
-            fontSize: '64px',
-            color: '#ff0000',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        const restartText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'Click to restart', {
-            fontSize: '24px',
-            color: '#ffffff'
-        }).setOrigin(0.5);
-        
-        // Restart on click
-        this.input.once('pointerdown', () => {
-            this.scene.restart();
+        // Show game over screen in UI
+        this.scene.launch('UIScene', {
+            level: this.playerLevel,
+            upgradeManager: this.upgradeManager,
+            isGameOver: true
         });
     }
     

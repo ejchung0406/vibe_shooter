@@ -4,12 +4,14 @@ import { UpgradeManager } from '../systems/UpgradeManager';
 interface UISceneData {
     level: number;
     upgradeManager: UpgradeManager;
+    isGameOver?: boolean;
 }
 
 export class UIScene extends Phaser.Scene {
     private level!: number;
     private upgradeManager!: UpgradeManager;
     private upgradeCards: Phaser.GameObjects.Container[] = [];
+    private isGameOver: boolean = false;
 
     constructor() {
         super({ key: 'UIScene' });
@@ -18,6 +20,7 @@ export class UIScene extends Phaser.Scene {
     init(data: UISceneData) {
         this.level = data.level;
         this.upgradeManager = data.upgradeManager;
+        this.isGameOver = data.isGameOver || false;
     }
 
     create() {
@@ -26,6 +29,40 @@ export class UIScene extends Phaser.Scene {
         
         // Create background overlay
         const overlay = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.8).setDepth(2000);
+
+        if (this.isGameOver) {
+            this.createGameOverScreen();
+        } else {
+            this.createLevelUpScreen();
+        }
+    }
+
+    private createGameOverScreen() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const title = this.add.text(screenWidth / 2, screenHeight * 0.4, 'GAME OVER', {
+            fontSize: '72px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ff0000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(2001);
+
+        const restartText = this.add.text(screenWidth / 2, screenHeight * 0.6, 'Click to restart', {
+            fontSize: '36px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        }).setOrigin(0.5).setDepth(2001);
+
+        this.input.once('pointerdown', () => {
+            this.scene.get('GameScene').scene.restart();
+            this.scene.stop();
+        });
+    }
+
+    private createLevelUpScreen() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
         
         // Level up title
         const title = this.add.text(screenWidth / 2, screenHeight * 0.2, `LEVEL ${this.level}!`, {

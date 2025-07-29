@@ -12,6 +12,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
     private explosionRadius: number = 120; // Increased from 80 (1.5x)
     private explosiveDamageMultiplier: number = 1;
     private explosiveBossDamageMultiplier: number = 1;
+    private isCritical: boolean = false;
 
     constructor(
         scene: Phaser.Scene,
@@ -22,13 +23,15 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         angle: number,
         explosiveDamageMultiplier: number,
         explosiveBossDamageMultiplier: number,
-        piercing: boolean = false
+        piercing: boolean = false,
+        isCritical: boolean = false
     ) {
         super(scene, x, y);
         
         this.damage = damage;
         this.speed = speed;
         this.piercing = piercing;
+        this.isCritical = isCritical;
         
         // Create larger explosive projectile sprite (orange/red)
         this.sprite = scene.add.rectangle(0, 0, 16, 16, 0xff4400);
@@ -145,7 +148,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
                     if (enemy.isBossEnemy()) { 
                         damage *= this.explosiveBossDamageMultiplier;
                     }
-                    enemy.takeDamage(damage);
+                    enemy.takeDamage(damage, this.isCritical);
                     
                     // Add knockback effect
                     if (distance > 0) {

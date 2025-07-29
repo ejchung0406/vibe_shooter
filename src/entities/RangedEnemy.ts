@@ -4,7 +4,8 @@ import { EnemyProjectile } from './EnemyProjectile';
 export class RangedEnemy extends BaseEnemy {
     private shootTimer: number = 0;
     private shootCooldown: number = 2000; // 2 seconds
-    private shootRange: number = 200; // Distance to start shooting
+    private shootRange: number = 1000; // Distance to start shooting
+    private shootSpeed: number = 150; // Speed of the projectile
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -15,12 +16,11 @@ export class RangedEnemy extends BaseEnemy {
         
         // Override properties for ranged enemy
         this.moveSpeed = 60; // Normal speed
-        this.damage = 8; // Lower damage (ranged)
-        this.xpValue = 20; // Medium XP
+        this.damage = 12; // Lower damage (ranged)
+        this.xpValue = 30; // Medium XP
         
         // Make ranged enemy smaller
-        this.sprite.setSize(20, 20);
-        this.setScale(0.8);
+        this.sprite.setSize(28, 28);
     }
 
     protected customUpdate(time: number, delta: number): void {
@@ -63,8 +63,8 @@ export class RangedEnemy extends BaseEnemy {
                     this.x,
                     this.y,
                     angle,
-                    8, // damage
-                    200 // speed
+                    this.damage, // damage
+                    this.shootSpeed // speed
                 );
                 
                 gameScene.getEnemyProjectiles().add(projectile);

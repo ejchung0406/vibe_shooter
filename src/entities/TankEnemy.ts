@@ -11,7 +11,7 @@ export class TankEnemy extends BaseEnemy {
         // Override properties for tank enemy
         this.moveSpeed = 30; // Very slow
         this.damage = 25; // High damage
-        this.xpValue = 30; // More XP for killing tank
+        this.xpValue = 50; // More XP for killing tank
         
         // Make tank bigger
         this.sprite.setSize(32, 32);

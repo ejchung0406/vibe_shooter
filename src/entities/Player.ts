@@ -17,7 +17,7 @@ export class Player extends Phaser.GameObjects.Container {
     private velocityY: number = 0;
     private moveSpeed: number = 200;
     private attackDamage: number = 10;
-    private armor: number = 10; // Default armor value
+    private armor: number = 5; // Default armor value
     private projectileCount: number = 1;
     private piercing: boolean = false;
     private projectileSpeed: number = 300;
@@ -33,7 +33,18 @@ export class Player extends Phaser.GameObjects.Container {
     private isBeingKnockedBack: boolean = false;
     private explosiveDamageMultiplier: number = 1;
     private explosiveBossDamageMultiplier: number = 1;
+    private healOverTime: boolean = false;
+    private healOverTimeTimer: number = 0;
+    private healOverTimeAmount: number = 1;
+    private healOverTimeInterval: number = 1000; // 1 second
     
+    // Critical strike properties
+    private criticalStrikeChance: number = 0;
+    private criticalStrikeDamage: number = 1.2; // 120% damage
+    private xpMultiplier: number = 1;
+    private qDamageToNormalMultiplier: number = 1;
+    private eSkillHeals: boolean = false;
+
     // Attack properties
     private comboCounter: number = 0;
     private comboThreshold: number = 3;
@@ -63,7 +74,7 @@ export class Player extends Phaser.GameObjects.Container {
     private isDashing: boolean = false;
     private dashDistance: number = 250; // Reduced from 500 to half
     private dashSpeed: number = 2000; // Very fast speed
-    private dashDuration: number = 250; // 0.25 seconds
+    private dashDuration: number = 150; // 0.25 seconds
     private dashTimer: number = 0;
     
     // Dash visual effects
@@ -79,6 +90,9 @@ export class Player extends Phaser.GameObjects.Container {
         this.sprite = scene.add.rectangle(0, 0, 20, 20, 0x00ff00);
         this.add(this.sprite);
         
+        // Scale the player
+        this.setScale(1.5);
+
         // Create health bar
         this.createHealthBar();
         
@@ -177,6 +191,9 @@ export class Player extends Phaser.GameObjects.Container {
         
         // Keep player within camera bounds
         this.constrainToCamera();
+
+        // Heal over time
+        this.updateHealOverTime(delta);
     }
 
     private triggerComboAttack() {
@@ -195,15 +212,17 @@ export class Player extends Phaser.GameObjects.Container {
         // Create a powerful combo attack (3 projectiles instead of 8)
         for (let i = 0; i < 3; i++) {
             const spreadAngle = angle + (i - 1) * 0.3;
+            const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
             const projectile = new Projectile(
                 scene,
                 this.x,
                 this.y,
-                this.attackDamage * 2,
+                damage,
                 this.projectileSpeed * 1.5,
                 spreadAngle,
                 true, // Combo attacks pierce
-                false
+                false,
+                isCritical
             );
             
             gameScene.getProjectiles().add(projectile);
@@ -254,29 +273,33 @@ export class Player extends Phaser.GameObjects.Container {
             
             if (isComboShot) {
                 // Create explosive projectile
+                const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                 const projectile = new ExplosiveProjectile(
                     scene,
                     this.x,
                     this.y,
-                    this.attackDamage * 2, // Double damage
+                    damage, // Double damage
                     this.projectileSpeed,
                     angle,
                     this.explosiveDamageMultiplier,
                     this.explosiveBossDamageMultiplier,
-                    this.piercing
+                    this.piercing,
+                    isCritical
                 );
                 gameScene.getProjectiles().add(projectile);
             } else {
                 // Regular projectile
+                const { damage, isCritical } = this.calculateDamage(this.attackDamage);
                 const projectile = new Projectile(
                     scene,
                     this.x,
                     this.y,
-                    this.attackDamage,
+                    damage,
                     this.projectileSpeed,
                     angle,
                     this.piercing,
-                    false
+                    false,
+                    isCritical
                 );
                 gameScene.getProjectiles().add(projectile);
             }
@@ -302,27 +325,31 @@ export class Player extends Phaser.GameObjects.Container {
             // Only make center projectile explosive for combo (middle index)
             const centerIndex = Math.floor((this.projectileCount - 1) / 2);
             if (isComboShot && i === centerIndex) {
+                const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                 projectile = new ExplosiveProjectile(
                     scene,
                     this.x,
                     this.y,
-                    this.attackDamage * 2,
+                    damage,
                     this.projectileSpeed,
                     projectileAngle,
                     this.explosiveDamageMultiplier,
                     this.explosiveBossDamageMultiplier,
-                    this.piercing
+                    this.piercing,
+                    isCritical
                 );
             } else {
+                const { damage, isCritical } = this.calculateDamage(this.attackDamage);
                 projectile = new Projectile(
                     scene,
                     this.x,
                     this.y,
-                    this.attackDamage,
+                    damage,
                     this.projectileSpeed,
                     projectileAngle,
                     this.piercing,
-                    false
+                    false,
+                    isCritical
                 );
             }
             
@@ -332,30 +359,34 @@ export class Player extends Phaser.GameObjects.Container {
 
     private performBurstAttack(scene: Phaser.Scene, gameScene: any, angle: number, isComboShot: boolean = false) {
         for (let i = 0; i < this.projectileCount; i++) {
-            scene.time.delayedCall(i * 100, () => { // 100ms delay between shots
+            scene.time.delayedCall(i * 50, () => { // 50ms delay between shots
                 let projectile;
                 if (isComboShot && i === 0) { // Make first projectile explosive for combo
+                    const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                     projectile = new ExplosiveProjectile(
                         scene,
                         this.x,
                         this.y,
-                        this.attackDamage * 2,
+                        damage,
                         this.projectileSpeed,
                         angle,
                         this.explosiveDamageMultiplier,
                         this.explosiveBossDamageMultiplier,
-                        this.piercing
+                        this.piercing,
+                        isCritical
                     );
                 } else {
+                    const { damage, isCritical } = this.calculateDamage(this.attackDamage);
                     projectile = new Projectile(
                         scene,
                         this.x,
                         this.y,
-                        this.attackDamage,
+                        damage,
                         this.projectileSpeed,
                         angle,
                         this.piercing,
-                        false
+                        false,
+                        isCritical
                     );
                 }
                 
@@ -576,7 +607,7 @@ export class Player extends Phaser.GameObjects.Container {
         const projectileCount = ( 5 + playerLevel ) * this.qSkillHomingMultiplier;
         
         for (let i = 0; i < projectileCount; i++) {
-            this.scene.time.delayedCall(i * 100, () => {
+            this.scene.time.delayedCall(i * 50, () => {
                 const angle = (i / projectileCount) * Math.PI * 2;
                 const offsetX = Math.cos(angle) * 30;
                 const offsetY = Math.sin(angle) * 30;
@@ -589,14 +620,20 @@ export class Player extends Phaser.GameObjects.Container {
                 
                 if (targetEnemies[targetIndex]) {
                     const target = targetEnemies[targetIndex];
+                    let damage = this.attackDamage * 0.6;
+                    if (!target.enemy.isBossEnemy()) {
+                        damage *= this.qDamageToNormalMultiplier;
+                    }
+                    const { damage: finalDamage, isCritical } = this.calculateDamage(damage);
                     
                     const projectile = new QProjectile(
                         scene,
                         this.x + offsetX,
                         this.y + offsetY,
-                        this.attackDamage * 0.6,
+                        finalDamage,
                         target.fixedX,
-                        target.fixedY
+                        target.fixedY,
+                        isCritical
                     );
                     
                     gameScene.getProjectiles().add(projectile);
@@ -629,6 +666,16 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
+    private updateHealOverTime(delta: number) {
+        if (this.healOverTime) {
+            this.healOverTimeTimer += delta;
+            if (this.healOverTimeTimer >= this.healOverTimeInterval) {
+                this.healOverTimeTimer -= this.healOverTimeInterval;
+                this.heal(this.healOverTimeAmount);
+            }
+        }
+    }
+
     private constrainToCamera() {
         const camera = this.scene.cameras.main;
         const body = this.body as Phaser.Physics.Arcade.Body;
@@ -652,6 +699,10 @@ export class Player extends Phaser.GameObjects.Container {
         
         this.eCooldownTimer = this.eCooldown;
         this.activateShield();
+
+        if (this.eSkillHeals) {
+            this.heal(this.maxHealth * 0.1);
+        }
     }
 
     private activateShield() {
@@ -694,7 +745,7 @@ export class Player extends Phaser.GameObjects.Container {
         if (this.isInvulnerable || this.shieldActive) return;
         
         // Apply armor damage reduction using logarithmic formula
-        const damageReduction = (-Math.exp(-this.armor / 10) + 1) * 100; // Percentage reduction
+        const damageReduction = this.getDamageReduction(); // Percentage reduction
         const actualDamage = Math.max(1, Math.round(damage * (1 - damageReduction / 100))); // Minimum 1 damage
         
         this.health -= actualDamage;
@@ -709,8 +760,38 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
+    public heal(amount: number) {
+        if (this.health >= this.maxHealth) {
+            return;
+        }
+
+        const healAmount = Math.min(amount, this.maxHealth - this.health);
+        this.health += healAmount;
+
+        // Show healing text
+        this.showHealText(healAmount);
+    }
+
+    private showHealText(amount: number) {
+        const healText = this.scene.add.text(this.x, this.y - 30, `+${Math.round(amount)}`, {
+            fontSize: '16px',
+            color: '#44ff44',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Animate healing text
+        this.scene.tweens.add({
+            targets: healText,
+            y: healText.y - 40,
+            alpha: 0,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => healText.destroy()
+        });
+    }
+
     private showDamageText(damage: number) {
-        const damageText = this.scene.add.text(this.x, this.y - 30, damage.toString(), {
+        const damageText = this.scene.add.text(this.x, this.y - 30, Math.round(damage).toString(), {
             fontSize: '16px',
             color: '#ff4444',
             fontStyle: 'bold'
@@ -725,6 +806,16 @@ export class Player extends Phaser.GameObjects.Container {
             ease: 'Power2',
             onComplete: () => damageText.destroy()
         });
+    }
+
+    private calculateDamage(baseDamage: number): { damage: number, isCritical: boolean } {
+        let finalDamage = baseDamage;
+        let isCritical = false;
+        if (Math.random() < this.criticalStrikeChance) {
+            finalDamage *= this.criticalStrikeDamage;
+            isCritical = true;
+        }
+        return { damage: finalDamage, isCritical };
     }
 
     private die() {
@@ -793,7 +884,7 @@ export class Player extends Phaser.GameObjects.Container {
     }
     
     public getDamageReduction(): number {
-        return (-Math.exp(-this.armor / 10) + 1) * 100; // Percentage reduction
+        return (-Math.exp(-this.armor / 50) + 1) * 100; // Percentage reduction
     }
     
     public increaseArmor(amount: number) {
@@ -846,5 +937,41 @@ export class Player extends Phaser.GameObjects.Container {
 
     public setExplosiveBossDamageMultiplier(multiplier: number) {
         this.explosiveBossDamageMultiplier = multiplier;
+    }
+
+    public getCriticalStrikeChance() {
+        return this.criticalStrikeChance;
+    }
+
+    public setCriticalStrikeChance(chance: number) {
+        this.criticalStrikeChance = chance;
+    }
+
+    public getCriticalStrikeDamage() {
+        return this.criticalStrikeDamage;
+    }
+
+    public setCriticalStrikeDamage(damage: number) {
+        this.criticalStrikeDamage = damage;
+    }
+
+    public getXPMultiplier() {
+        return this.xpMultiplier;
+    }
+
+    public setXPMultiplier(multiplier: number) {
+        this.xpMultiplier = multiplier;
+    }
+
+    public getQDamageToNormalMultiplier() {
+        return this.qDamageToNormalMultiplier;
+    }
+
+    public setQDamageToNormalMultiplier(multiplier: number) {
+        this.qDamageToNormalMultiplier = multiplier;
+    }
+
+    public setESkillHeals(heals: boolean) {
+        this.eSkillHeals = heals;
     }
 } 

@@ -81,19 +81,40 @@ export class UpgradeManager {
             {
                 id: "power_shot",
                 name: "Power Shot",
-                description: "+5 damage",
+                description: "+10 damage",
                 rarity: "common",
                 effect: (player: any) => {
-                    player.attackDamage += 5;
+                    player.attackDamage += 10;
+                }
+            },
+            {
+                id: "power_shot_2",
+                name: "Power Shot 2",
+                description: "+20 damage",
+                rarity: "rare",
+                dependencies: ["power_shot"],
+                effect: (player: any) => {
+                    player.attackDamage += 20;
+                }
+            },
+            {
+                id: "power_shot_3",
+                name: "Power Shot 3",
+                description: "+30 damage",
+                rarity: "epic",
+                dependencies: ["power_shot_2"],
+                effect: (player: any) => {
+                    player.attackDamage += 30;
                 }
             },
             {
                 id: "mega_blast",
                 name: "Mega Blast",
-                description: "+15 damage", 
+                description: "+50 damage", 
                 rarity: "rare",
+                dependencies: ["power_shot_3"],
                 effect: (player: any) => {
-                    player.attackDamage += 15;
+                    player.attackDamage += 50;  
                 }
             },
             {
@@ -134,6 +155,198 @@ export class UpgradeManager {
                 dependencies: ["combo_master"],
                 effect: (player: any) => {
                     player.setExplosiveBossDamageMultiplier(5);
+                }
+            },
+
+            // Character HP
+            { 
+                id: "hp_boost",
+                name: "HP Boost",
+                description: "+50 max HP",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.maxHealth += 50;
+                }
+            },
+            {
+                id: "hp_boost_2",
+                name: "HP Boost 2",
+                description: "+100 max HP",
+                rarity: "rare",
+                dependencies: ["hp_boost"],
+                effect: (player: any) => {
+                    player.maxHealth += 100;
+                }
+            },
+            {
+                id: "heal_over_time",
+                name: "Heal Over Time",
+                description: "Heal 1 HP every 1 second",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.healOverTime = true;
+                }
+            },
+            {
+                id: "instant_heal",
+                name: "Instant Heal",
+                description: "Heal 30% of max HP",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.heal(player.maxHealth * 0.3);
+                }
+            },
+            {
+                id: "instant_heal_2",
+                name: "Instant Heal 2",
+                description: "Heal 50% of max HP",
+                rarity: "rare",
+                dependencies: ["instant_heal"],
+                effect: (player: any) => {
+                    player.heal(player.maxHealth * 0.5);
+                }
+            },
+
+            // Critical strike
+            {
+                id: "critical_strike",
+                name: "Critical Strike",
+                description: "Critical strike chance 30%",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.setCriticalStrikeChance(0.3);
+                }
+            },
+            {
+                id: "critical_strike_2",
+                name: "Critical Strike 2",
+                description: "Critical strike chance 50%",
+                rarity: "rare",
+                dependencies: ["critical_strike"],
+                effect: (player: any) => {
+                    player.setCriticalStrikeChance(0.5);
+                }
+            },
+            {
+                id: "critical_strike_3",
+                name: "Critical Strike 3",
+                description: "Critical strike chance 70%",
+                rarity: "epic",
+                dependencies: ["critical_strike_2"],
+                effect: (player: any) => {
+                    player.setCriticalStrikeChance(0.7);
+                }
+            },
+            {
+                id: "critical_damage",
+                name: "Critical Damage",
+                description: "Critical strike damage +10%",
+                rarity: "common",
+                dependencies: ["critical_strike"],
+                effect: (player: any) => {
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.1);
+                }
+            },
+            {
+                id: "critical_damage_2",
+                name: "Critical Damage 2",
+                description: "Critical strike damage +15%",
+                rarity: "rare",
+                dependencies: ["critical_damage"],
+                effect: (player: any) => {
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.15);
+                }
+            },
+            {
+                id: "critical_damage_3",
+                name: "Critical Damage 3",
+                description: "Critical strike damage +20%",
+                rarity: "epic",
+                dependencies: ["critical_damage_2"],
+                effect: (player: any) => {
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.2);
+                }
+            },
+            {
+                id: "critical_damage_4",
+                name: "Critical Damage 4",
+                description: "Critical strike damage +25%",
+                rarity: "legendary",
+                dependencies: ["critical_damage_3"],
+                effect: (player: any) => {
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.25);
+                }
+            },
+
+            // New skills
+            {
+                id: "exp_boost",
+                name: "EXP Boost",
+                description: "Gain 20% more experience from normal enemies",
+                rarity: "rare",
+                effect: (player: any) => {
+                    player.setXPMultiplier(player.getXPMultiplier() + 0.2);
+                }
+            },
+            {
+                id: "q_damage_boost",
+                name: "Q Damage Boost",
+                description: "Q skill deals 2x damage to normal enemies",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.setQDamageToNormalMultiplier(2);
+                }
+            },
+            {
+                id: "spawn_increase",
+                name: "Swarm",
+                description: "Increase enemy spawn rate by 1.5x",
+                rarity: "legendary",
+                effect: (player: any) => {
+                    const enemySpawner = (this.scene as any).getEnemySpawner();
+                    if (enemySpawner) {
+                        enemySpawner.setSpawnMultiplier(1.5);
+                    }
+                }
+            },
+            {
+                id: "e_skill_heal",
+                name: "Shield Heal",
+                description: "E skill heals 10% of max health when used",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.setESkillHeals(true);
+                }
+            },
+
+            // Armor upgrades
+            {
+                id: "armor_boost_1",
+                name: "Armor Boost",
+                description: "+2 Armor",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.increaseArmor(2);
+                }
+            },
+            {
+                id: "armor_boost_2",
+                name: "Armor Boost 2",
+                description: "+3 Armor",
+                rarity: "rare",
+                dependencies: ["armor_boost_1"],
+                effect: (player: any) => {
+                    player.increaseArmor(3);
+                }
+            },
+            {
+                id: "armor_boost_3",
+                name: "Armor Boost 3",
+                description: "+5 Armor",
+                rarity: "epic",
+                dependencies: ["armor_boost_2"],
+                effect: (player: any) => {
+                    player.increaseArmor(5);
                 }
             }
         ];

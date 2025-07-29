@@ -11,6 +11,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected healthBarBg!: Phaser.GameObjects.Rectangle;
     protected baseHealthMultiplier: number = 1;
     protected isBoss: boolean = false;
+    private highlight!: Phaser.GameObjects.Graphics;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -33,6 +34,16 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         // Setup collision with player
         this.setupPlayerCollision();
+
+        // Make the enemy interactive
+        this.setInteractive(new Phaser.Geom.Rectangle(-12, -12, 24, 24), Phaser.Geom.Rectangle.Contains);
+        this.on('pointerover', this.showHighlight, this);
+        this.on('pointerout', this.hideHighlight, this);
+
+        // Create highlight graphic
+        this.highlight = scene.add.graphics();
+        this.add(this.highlight);
+        this.hideHighlight();
     }
 
     protected setupHitbox() {
@@ -40,6 +51,16 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         body.setSize(28, 28);
         body.setOffset(-14, -14);
         body.setCollideWorldBounds(false);
+    }
+
+    private showHighlight() {
+        this.highlight.clear();
+        this.highlight.lineStyle(2, 0x808080); // Gray color
+        this.highlight.strokeRect(-12, -12, 24, 24);
+    }
+
+    private hideHighlight() {
+        this.highlight.clear();
     }
 
     protected createHealthBar() {
@@ -176,11 +197,11 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         }
     }
 
-    public takeDamage(damage: number) {
+    public takeDamage(damage: number, isCritical: boolean = false) {
         this.health -= damage;
         
         // Show damage text
-        this.showDamageText(damage);
+        this.showDamageText(damage, isCritical);
 
         // Blink effect
         const originalColor = this.getEnemyColor();
@@ -196,10 +217,13 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         }
     }
 
-    private showDamageText(damage: number) {
-        const damageText = this.scene.add.text(this.x, this.y - 30, damage.toString(), {
-            fontSize: '14px',
-            color: '#ffff00',
+    private showDamageText(damage: number, isCritical: boolean) {
+        const fontSize = isCritical ? '22px' : '14px';
+        const color = isCritical ? '#ff0000' : '#ffff00';
+
+        const damageText = this.scene.add.text(this.x, this.y - 30, Math.round(damage).toString(), {
+            fontSize: fontSize,
+            color: color,
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
@@ -214,6 +238,25 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         });
     }
 
+    private showXPText(amount: number) {
+        const xpText = this.scene.add.text(this.x, this.y, `+${amount} XP`, {
+            fontSize: '14px',
+            color: '#00ff00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.scene.tweens.add({
+            targets: xpText,
+            y: this.y - 50,
+            alpha: 0,
+            duration: 1500,
+            ease: 'Power1',
+            onComplete: () => {
+                xpText.destroy();
+            }
+        });
+    }
+
     public die() {
         const scene = this.scene as Phaser.Scene;
         const gameScene = scene as any;
@@ -221,6 +264,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         // Give XP to player
         gameScene.addXP(this.xpValue);
         
+        // Show XP text
+        this.showXPText(this.xpValue);
+
         // Notify enemy spawner of kill (for wave progression)
         const enemySpawner = gameScene.getEnemySpawner();
         if (enemySpawner) {

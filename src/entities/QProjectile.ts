@@ -5,6 +5,7 @@ export class QProjectile extends Phaser.GameObjects.Container {
     private damage: number = 8;
     private lifetime: number = 1000; // Increased lifetime for acceleration
     private age: number = 0;
+    private isCritical: boolean = false;
 
     constructor(
         scene: Phaser.Scene,
@@ -12,11 +13,13 @@ export class QProjectile extends Phaser.GameObjects.Container {
         y: number,
         damage: number,
         targetX: number,
-        targetY: number
+        targetY: number,
+        isCritical: boolean = false
     ) {
         super(scene, x, y);
         
         this.damage = damage;
+        this.isCritical = isCritical;
         
         // Create projectile sprite (yellow for Q skill)
         this.sprite = scene.add.rectangle(0, 0, 6, 6, 0xffff00);
@@ -55,7 +58,8 @@ export class QProjectile extends Phaser.GameObjects.Container {
         }
         
         // Destroy if out of map bounds
-        const mapBounds = 2000;
+        const gameScene = this.scene as any;
+        const mapBounds = gameScene.getMapSize() / 2;
         if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
             this.destroy();
         }
@@ -77,7 +81,7 @@ export class QProjectile extends Phaser.GameObjects.Container {
 
     private onEnemyHit(projectile: any, enemy: any) {
         // Deal damage to enemy
-        enemy.takeDamage(this.damage);
+        enemy.takeDamage(this.damage, this.isCritical);
         
         // Add knockback effect
         const dx = enemy.x - this.x;

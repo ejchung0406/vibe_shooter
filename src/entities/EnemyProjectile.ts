@@ -57,7 +57,8 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         this.y += this.velocityY * (delta / 1000);
         
         // Destroy if out of map bounds
-        const mapBounds = 2000; // Large map boundary
+        const gameScene = this.scene as any;
+        const mapBounds = gameScene.getMapSize() / 2;
         if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
             this.destroy();
         }

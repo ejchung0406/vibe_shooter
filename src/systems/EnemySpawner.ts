@@ -9,7 +9,7 @@ export class EnemySpawner {
     private spawnInterval: number = 2000; // 4 seconds (slower spawning)
     private waveNumber: number = 1;
     private enemiesPerWave: number = 3; // Fewer enemies per wave
-    private bossSpawnInterval: number = 3; // Boss every 3 waves (3, 6, 9, ...) for debugging
+    private bossSpawnInterval: number = 4; // Boss every 4 waves (4, 8, 12, ...) for debugging
     private bossActive: boolean = false; // Track if boss is currently active
     
     // Wave system based on kills
@@ -19,6 +19,7 @@ export class EnemySpawner {
     // Difficulty scaling
     private difficultyMultiplier: number = 1.0;
     private maxEnemiesOnScreen: number = 20;
+    private spawnMultiplier: number = 1;
 
     constructor(scene: GameScene) {
         this.scene = scene;
@@ -52,9 +53,11 @@ export class EnemySpawner {
         const enemyTypes = this.getEnemyTypesForWave();
         
         // Spawn enemies around the player
-        enemyTypes.forEach((type, index) => {
-            this.spawnEnemy(type);
-        });
+        for (let i = 0; i < this.spawnMultiplier; i++) {
+            enemyTypes.forEach((type, index) => {
+                this.spawnEnemy(type);
+            });
+        }
         
         // Note: Wave advancement and boss spawning now handled by kill count in onEnemyKilled()
     }
@@ -68,7 +71,7 @@ export class EnemySpawner {
             
             if (this.waveNumber >= 15 && rand < 0.1) {
                 types.push('boss');
-            } else if (this.waveNumber >= 8 && rand < 0.4) {
+            } else if (this.waveNumber >= 1 && rand < 0.4) {
                 types.push('ranged');
             } else if (this.waveNumber >= 5 && rand < 0.3) {
                 types.push('tank');
@@ -266,5 +269,13 @@ export class EnemySpawner {
 
     public resumeSpawning() {
         this.startSpawning();
+    }
+
+    public getSpawnMultiplier() {
+        return this.spawnMultiplier;
+    }
+
+    public setSpawnMultiplier(multiplier: number) {
+        this.spawnMultiplier = multiplier;
     }
 } 
