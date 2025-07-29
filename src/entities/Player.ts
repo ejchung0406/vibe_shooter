@@ -33,9 +33,11 @@ export class Player extends Phaser.GameObjects.Container {
     private isBeingKnockedBack: boolean = false;
     private explosiveDamageMultiplier: number = 1;
     private explosiveBossDamageMultiplier: number = 1;
+
+    // Auto heal
     private healOverTime: boolean = false;
     private healOverTimeTimer: number = 0;
-    private healOverTimeAmount: number = 1;
+    private healOverTimeAmount: number = 2;
     private healOverTimeInterval: number = 1000; // 1 second
     
     // Critical strike properties

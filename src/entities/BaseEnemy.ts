@@ -81,8 +81,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         // HP scaling map based on player level
         const hpScalingMap: { [key: number]: number } = {
             1: 15, 2: 20, 3: 25, 4: 30, 5: 45,
-            6: 60, 7: 80, 8: 100, 9: 150, 10: 250,
-            11: 350, 12: 550, 13: 800, 14: 1000, 15: 3000,
+            6: 60, 7: 80, 8: 100, 9: 150, 10: 200,
+            11: 300, 12: 450, 13: 600, 14: 800, 15: 1100,
+            16: 1500, 17: 2000, 18: 2500, 19: 3000, 20: 4000,
         };
         
         // Get base HP for current level (default to level 10 if higher)

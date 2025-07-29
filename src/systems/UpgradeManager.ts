@@ -90,31 +90,31 @@ export class UpgradeManager {
             {
                 id: "power_shot_2",
                 name: "Power Shot 2",
-                description: "+20 damage",
+                description: "+30 damage",
                 rarity: "rare",
                 dependencies: ["power_shot"],
-                effect: (player: any) => {
-                    player.attackDamage += 20;
-                }
-            },
-            {
-                id: "power_shot_3",
-                name: "Power Shot 3",
-                description: "+30 damage",
-                rarity: "epic",
-                dependencies: ["power_shot_2"],
                 effect: (player: any) => {
                     player.attackDamage += 30;
                 }
             },
             {
+                id: "power_shot_3",
+                name: "Power Shot 3",
+                description: "+50 damage",
+                rarity: "epic",
+                dependencies: ["power_shot_2"],
+                effect: (player: any) => {
+                    player.attackDamage += 50;
+                }
+            },
+            {
                 id: "mega_blast",
                 name: "Mega Blast",
-                description: "+50 damage", 
+                description: "+100 damage", 
                 rarity: "rare",
                 dependencies: ["power_shot_3"],
                 effect: (player: any) => {
-                    player.attackDamage += 50;  
+                    player.attackDamage += 100;  
                 }
             },
             {
@@ -127,16 +127,42 @@ export class UpgradeManager {
                 }
             },
 
-            // Skill improvements
+            // Q Skill improvements
             {
-                id: "auto_q",
+                id: "double_q",
                 name: "Double Homing",
                 description: "Double the number of projectiles from Q",
-                rarity: "epic",
+                rarity: "rare",
                 effect: (player: any) => {
                     player.setQSkillHomingMultiplier(2);
                 }
             },
+            {
+                id: "triple_q",
+                name: "Triple Homing",
+                description: "Triple the number of projectiles from Q",
+                rarity: "epic",
+                dependencies: ["double_q"],
+                effect: (player: any) => {
+                    const currentMultiplier = player.getQSkillHomingMultiplier();
+                    player.setQSkillHomingMultiplier(currentMultiplier * 3);
+                }
+            },
+            {
+                id: "triple_q_2",
+                name: "Triple Homing 2",
+                description: "Triple the number of projectiles from Q",
+                rarity: "epic",
+                dependencies: ["triple_q"],
+                effect: (player: any) => {
+                    const currentMultiplier = player.getQSkillHomingMultiplier();
+                    player.setQSkillHomingMultiplier(currentMultiplier * 3);    
+                }
+            },
+
+
+
+            // Combo Master
             {
                 id: "wombo_combo_master",
                 name: "Wombo Combo Master",
@@ -145,6 +171,17 @@ export class UpgradeManager {
                 dependencies: ["combo_master"],
                 effect: (player: any) => {
                     player.setExplosiveDamageMultiplier(1.5);
+                }
+            },
+            {
+                id: "wombo_combo_master_2",
+                name: "Wombo Combo Master 2",
+                description: "Explosive shot deals 2x damage to enemies",
+                rarity: "legendary",
+                dependencies: ["wombo_combo_master"],
+                effect: (player: any) => {
+                    const currentMultiplier = player.getExplosiveDamageMultiplier();
+                    player.setExplosiveDamageMultiplier(currentMultiplier * 2);
                 }
             },
             {
@@ -181,7 +218,7 @@ export class UpgradeManager {
             {
                 id: "heal_over_time",
                 name: "Heal Over Time",
-                description: "Heal 1 HP every 1 second",
+                description: "Heal 2 HP every 1 second",
                 rarity: "epic",
                 effect: (player: any) => {
                     player.healOverTime = true;

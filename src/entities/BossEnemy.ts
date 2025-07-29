@@ -3,7 +3,7 @@ import { EnemyProjectile } from './EnemyProjectile';
 
 export class BossEnemy extends BaseEnemy {
     private singleShotTimer: number = 0;
-    private singleShotCooldown: number = 1000; // 1 second
+    private singleShotCooldown: number = 1500; // 1.5 second
 
     private barrageTimer: number = 0;
     private barrageCooldown: number = 5000; // 5 seconds
