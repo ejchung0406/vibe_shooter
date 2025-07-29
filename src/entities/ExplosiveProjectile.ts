@@ -9,7 +9,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
     private piercing: boolean = false;
     private lifetime: number = 3000;
     private age: number = 0;
-    private explosionRadius: number = 80;
+    private explosionRadius: number = 120; // Increased from 80 (1.5x)
 
     constructor(
         scene: Phaser.Scene,

@@ -18,7 +18,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         this.calculateHealth();
         
         // Create enemy sprite
-        this.sprite = scene.add.rectangle(0, 0, 24, 24, 0xff0000);
+        this.sprite = scene.add.rectangle(0, 0, 24, 24, this.getEnemyColor());
         this.add(this.sprite);
         
         // Create health bar
@@ -26,13 +26,19 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         // Add physics body
         scene.physics.add.existing(this);
-        const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setCollideWorldBounds(false);
+        this.setupHitbox();
         
         scene.add.existing(this);
         
         // Setup collision with player
         this.setupPlayerCollision();
+    }
+
+    protected setupHitbox() {
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(28, 28);
+        body.setOffset(-14, -14);
+        body.setCollideWorldBounds(false);
     }
 
     protected createHealthBar() {
@@ -145,30 +151,23 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         // Push player away from enemy (with resistance)
         const dx = player.x - enemy.x;
         const dy = player.y - enemy.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance > 0) {
-            // Player knockback (reduced by resistance)
-            const basePlayerKnockback = 80;
-            const knockbackResistance = player.getKnockbackResistance();
-            const playerKnockback = basePlayerKnockback * knockbackResistance;
-            const playerKnockX = (dx / distance) * playerKnockback;
-            const playerKnockY = (dy / distance) * playerKnockback;
-            
-            player.x += playerKnockX;
-            player.y += playerKnockY;
-            
-            // Push enemy away from player using physics
-            const enemyPushForce = 200;
-            const enemyPushX = -(dx / distance) * enemyPushForce;
-            const enemyPushY = -(dy / distance) * enemyPushForce;
-            
-            const body = enemy.body as Phaser.Physics.Arcade.Body;
+        // Player knockback (with resistance)
+        const playerKnockbackForce = 400;
+        player.applyKnockback(dx, dy, playerKnockbackForce);
+        
+        // Push enemy away from player using physics
+        const enemyPushForce = 200;
+        const enemyPushX = -(dx / Math.sqrt(dx * dx + dy * dy)) * enemyPushForce;
+        const enemyPushY = -(dy / Math.sqrt(dx * dx + dy * dy)) * enemyPushForce;
+        
+        const body = enemy.body as Phaser.Physics.Arcade.Body;
+        if (body) {
             body.setVelocity(enemyPushX, enemyPushY);
             
             // Reset velocity after a short time
-            this.scene.time.delayedCall(300, () => {
-                if (enemy.active) {
+            this.scene.time.delayedCall(200, () => {
+                if (enemy.active && body) {
                     body.setVelocity(0, 0);
                 }
             });
@@ -180,6 +179,15 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         // Show damage text
         this.showDamageText(damage);
+
+        // Blink effect
+        const originalColor = this.getEnemyColor();
+        this.sprite.setFillStyle(0xffffff, 1); // White, Opaque
+        this.scene.time.delayedCall(50, () => {
+            if (this.active && this.sprite) {
+                this.sprite.setFillStyle(originalColor, 1); // Original Color, Opaque
+            }
+        });
         
         if (this.health <= 0) {
             this.die();
@@ -204,12 +212,18 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         });
     }
 
-    protected die() {
+    public die() {
         const scene = this.scene as Phaser.Scene;
         const gameScene = scene as any;
         
         // Give XP to player
         gameScene.addXP(this.xpValue);
+        
+        // Notify enemy spawner of kill (for wave progression)
+        const enemySpawner = gameScene.getEnemySpawner();
+        if (enemySpawner) {
+            enemySpawner.onEnemyKilled();
+        }
         
         // Create death effect
         this.createDeathEffect();

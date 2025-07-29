@@ -20,110 +20,88 @@ export class UpgradeManager {
 
     private initializeUpgrades() {
         this.availableUpgrades = [
-            // Attack Speed Upgrades
+            // Attack modifications
             {
-                id: 'attack_speed_1',
-                name: 'Rapid Fire',
-                description: 'Increase attack speed by 20%',
-                rarity: 'common',
-                effect: (player: any) => player.increaseAttackSpeed(100)
-            },
-            {
-                id: 'attack_speed_2',
-                name: 'Lightning Strike',
-                description: 'Increase attack speed by 40%',
-                rarity: 'rare',
-                effect: (player: any) => player.increaseAttackSpeed(200)
-            },
-            
-            // Damage Upgrades
-            {
-                id: 'damage_1',
-                name: 'Power Shot',
-                description: 'Increase damage by 5',
-                rarity: 'common',
-                effect: (player: any) => player.increaseDamage(5)
-            },
-            {
-                id: 'damage_2',
-                name: 'Mega Blast',
-                description: 'Increase damage by 15',
-                rarity: 'rare',
-                effect: (player: any) => player.increaseDamage(15)
-            },
-            
-            // Projectile Count Upgrades
-            {
-                id: 'projectile_count_1',
-                name: 'Double Shot',
-                description: 'Add 1 more projectile',
-                rarity: 'common',
-                effect: (player: any) => player.increaseProjectileCount(1)
-            },
-            {
-                id: 'projectile_count_2',
-                name: 'Triple Shot',
-                description: 'Add 2 more projectiles',
-                rarity: 'rare',
-                effect: (player: any) => player.increaseProjectileCount(2)
-            },
-            
-            // Special Abilities
-            {
-                id: 'piercing',
-                name: 'Piercing Shot',
-                description: 'Projectiles pass through enemies',
-                rarity: 'epic',
-                effect: (player: any) => player.enablePiercing()
-            },
-            {
-                id: 'spread_attack',
-                name: 'Spread Shot',
-                description: 'Multi-projectile attacks spread in an arc',
-                rarity: 'rare',
-                effect: (player: any) => player.enableSpreadAttack()
-            },
-            {
-                id: 'burst_attack',
-                name: 'Burst Fire',
-                description: 'Multi-projectile attacks fire in rapid sequence',
-                rarity: 'rare',
-                effect: (player: any) => player.enableBurstAttack()
-            },
-
-            
-            // Speed Upgrades
-            {
-                id: 'projectile_speed_1',
-                name: 'Swift Shot',
-                description: 'Increase projectile speed by 50',
-                rarity: 'common',
-                effect: (player: any) => player.increaseProjectileSpeed(50)
-            },
-            {
-                id: 'projectile_speed_2',
-                name: 'Sonic Shot',
-                description: 'Increase projectile speed by 100',
-                rarity: 'rare',
-                effect: (player: any) => player.increaseProjectileSpeed(100)
-            },
-            
-            // Legendary Upgrades
-            {
-                id: 'combo_master',
-                name: 'Combo Master',
-                description: 'Every 3rd shot becomes explosive and damages all nearby enemies',
-                rarity: 'legendary',
-                effect: (player: any) => player.enableComboMaster()
-            },
-            {
-                id: 'rapid_burst',
-                name: 'Rapid Burst',
-                description: 'Fires a burst of 8 projectiles in all directions',
-                rarity: 'legendary',
+                id: "double_shot",
+                name: "Double Shot",
+                description: "Add 1 more projectile",
+                rarity: "common",
                 effect: (player: any) => {
-                    // This creates a special burst attack pattern
-                    console.log('Rapid Burst activated!');
+                    player.projectileCount++;
+                }
+            },
+            {
+                id: "triple_shot",
+                name: "Triple Shot", 
+                description: "Add 2 more projectiles",
+                rarity: "rare",
+                effect: (player: any) => {
+                    player.projectileCount += 2;
+                }
+            },
+            {
+                id: "burst_fire",
+                name: "Burst Fire",
+                description: "Fire projectiles in rapid sequence",
+                rarity: "rare", 
+                effect: (player: any) => {
+                    player.enableBurstAttack();
+                }
+            },
+            {
+                id: "combo_master",
+                name: "Combo Master",
+                description: "Every 3rd shot becomes explosive",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.enableComboMaster();
+                }
+            },
+            
+            // Stat improvements
+            {
+                id: "rapid_fire",
+                name: "Rapid Fire",
+                description: "+20% attack speed",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.attackCooldown *= 0.8;
+                }
+            },
+            {
+                id: "lightning_strike",
+                name: "Lightning Strike", 
+                description: "+40% attack speed",
+                rarity: "rare",
+                effect: (player: any) => {
+                    player.attackCooldown *= 0.6;
+                }
+            },
+            {
+                id: "power_shot",
+                name: "Power Shot",
+                description: "+5 damage",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.attackDamage += 5;
+                }
+            },
+            {
+                id: "mega_blast",
+                name: "Mega Blast",
+                description: "+15 damage", 
+                rarity: "rare",
+                effect: (player: any) => {
+                    player.attackDamage += 15;
+                }
+            },
+            {
+                id: "piercing_shot",
+                name: "Piercing Shot",
+                description: "Projectiles pass through enemies",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.piercing = true;
                 }
             }
         ];

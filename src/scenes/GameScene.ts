@@ -5,6 +5,7 @@ import { RangedEnemy } from '../entities/RangedEnemy';
 import { Projectile } from '../entities/Projectile';
 import { UpgradeManager } from '../systems/UpgradeManager';
 import { EnemySpawner } from '../systems/EnemySpawner';
+import { SKILL_UNLOCK_LEVELS } from '../entities/Player';
 
 export class GameScene extends Phaser.Scene {
     private player!: Player;
@@ -30,12 +31,28 @@ export class GameScene extends Phaser.Scene {
     private xpBar!: Phaser.GameObjects.Rectangle;
     private qSkillUI!: Phaser.GameObjects.Container;
     private eSkillUI!: Phaser.GameObjects.Container;
+    private dashSkillUI!: Phaser.GameObjects.Container; // Dash skill UI
+    
+    // Character stats UI
+    private statsContainer!: Phaser.GameObjects.Container;
+    private damageText!: Phaser.GameObjects.Text;
+    private attackSpeedText!: Phaser.GameObjects.Text;
+    private movementSpeedText!: Phaser.GameObjects.Text;
+    private armorText!: Phaser.GameObjects.Text;
+    private projectileCountText!: Phaser.GameObjects.Text;
+    
+    // Wave counter UI
+    private waveText!: Phaser.GameObjects.Text;
+    private pauseContainer!: Phaser.GameObjects.Container;
 
     constructor() {
         super({ key: 'GameScene' });
     }
 
     create() {
+        // Enable physics debugging
+        // this.physics.world.createDebugGraphic();
+
         // Create background pattern
         this.createBackground();
         
@@ -63,9 +80,13 @@ export class GameScene extends Phaser.Scene {
         
         // Start enemy spawning
         this.enemySpawner.startSpawning();
+        this.enemySpawner.preSpawnEnemies(5);
         
         // Setup input
         this.setupInput();
+
+        window.addEventListener('keydown', this.handleKeyDown);
+        this.events.on('shutdown', this.shutdown, this);
     }
 
     update(time: number, delta: number) {
@@ -92,14 +113,16 @@ export class GameScene extends Phaser.Scene {
             projectile.update(time, delta);
         });
         
-        // Update camera
-        this.updateCamera();
-        
         // Update UI
         this.updateUI();
-        
-        // Update skill UI
         this.updateSkillUI();
+        this.updateCamera();
+        
+        // Update character stats display
+        this.updateCharacterStats();
+        
+        // Update wave display
+        this.updateWaveDisplay();
         
         // Check for level up
         this.checkLevelUp();
@@ -132,47 +155,60 @@ export class GameScene extends Phaser.Scene {
         const xpBarWidth = screenWidth - 40;
         
         // XP bar background
-        this.add.rectangle(screenWidth / 2, xpBarY, xpBarWidth, 10, 0x333333).setScrollFactor(0);
+        this.add.rectangle(screenWidth / 2, xpBarY, xpBarWidth, 10, 0x333333).setScrollFactor(0).setDepth(1000);
         
         // XP bar (will be updated in updateUI) - start from left edge
-        this.xpBar = this.add.rectangle(20, xpBarY, 0, 10, 0x00ff00).setOrigin(0, 0.5).setScrollFactor(0);
+        this.xpBar = this.add.rectangle(20, xpBarY, 0, 10, 0x00ff00).setOrigin(0, 0.5).setScrollFactor(0).setDepth(1001);
         
-        // XP text (on the bar, white color)
+        // XP text (on the bar, better visibility with stroke)
         this.xpText = this.add.text(screenWidth / 2, xpBarY, 'XP: 0/100', {
-            fontSize: '12px',
-            color: '#ffffff'
-        }).setOrigin(0.5).setScrollFactor(0);
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
         
         this.timeText = this.add.text(20, 80, 'Time: 0:00', {
-            fontSize: '18px',
+            fontSize: '22px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ffff'
-        }).setScrollFactor(0);
+        }).setScrollFactor(0).setDepth(1000);
         
         // Health bar (center bottom like LoL)
         const centerX = screenWidth / 2;
         const bottomY = screenHeight - 60;
         
-        this.healthBarBg = this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0);
-        this.healthBar = this.add.rectangle(centerX, bottomY, 300, 30, 0x00ff00).setScrollFactor(0);
+        this.healthBarBg = this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0).setDepth(1000);
+        this.healthBar = this.add.rectangle(centerX, bottomY, 300, 30, 0x00ff00).setScrollFactor(0).setDepth(1001);
         this.healthText = this.add.text(centerX, bottomY, '100/100', {
-            fontSize: '18px',
-            color: '#ffffff'
-        }).setOrigin(0.5).setScrollFactor(0);
+            fontSize: '22px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
         
-        // Level text (left of health bar)
-        this.levelText = this.add.text(centerX - 180, bottomY, 'Level: 1', {
-            fontSize: '20px',
+        // Level text (left of health bar, moved more to the left)
+        this.levelText = this.add.text(centerX - 220, bottomY, 'Level: 1', {
+            fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff'
-        }).setOrigin(0.5).setScrollFactor(0);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
         
-        // Add wave counter on the right side
-        this.add.text(screenWidth - 150, 20, 'Wave: 1', {
-            fontSize: '18px',
+        // Add wave counter on the right side (dynamic)
+        this.waveText = this.add.text(screenWidth - 200, 20, 'Wave: 1 (0/10)', {
+            fontSize: '22px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffaa00'
-        }).setScrollFactor(0);
+        }).setScrollFactor(0).setDepth(1000);
         
         // Create skill UI
         this.createSkillUI();
+        
+        // Create character stats UI
+        this.createCharacterStatsUI();
+        this.createPauseUI();
     }
 
     private updateUI() {
@@ -206,12 +242,20 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    // Input keys
     private wKey!: Phaser.Input.Keyboard.Key;
-    private aKey!: Phaser.Input.Keyboard.Key;
     private sKey!: Phaser.Input.Keyboard.Key;
+    private aKey!: Phaser.Input.Keyboard.Key;
     private dKey!: Phaser.Input.Keyboard.Key;
+    private qKey!: Phaser.Input.Keyboard.Key;
+    private eKey!: Phaser.Input.Keyboard.Key;
+    private shiftKey!: Phaser.Input.Keyboard.Key; // Left Shift for dash
+    private spaceKey!: Phaser.Input.Keyboard.Key; // Spacebar for pause
 
     private setupInput() {
+        if (!this.input.keyboard) {
+            return;
+        }
         // Create cursor keys for WASD
         this.wKey = this.input.keyboard.addKey('W');
         this.aKey = this.input.keyboard.addKey('A');
@@ -225,16 +269,21 @@ export class GameScene extends Phaser.Scene {
             }
         });
         
-        // Q and E skill keys
-        const qKey = this.input.keyboard.addKey('Q');
-        const eKey = this.input.keyboard.addKey('E');
+        // Q, E, Shift, and Space keys
+        this.qKey = this.input.keyboard.addKey('Q');
+        this.eKey = this.input.keyboard.addKey('E');
+        this.shiftKey = this.input.keyboard.addKey('SHIFT');
         
-        qKey.on('down', () => {
+        this.qKey.on('down', () => {
             this.player.useQSkill();
         });
         
-        eKey.on('down', () => {
+        this.eKey.on('down', () => {
             this.player.useESkill();
+        });
+        
+        this.shiftKey.on('down', () => {
+            this.player.useDashSkill();
         });
     }
 
@@ -245,6 +294,16 @@ export class GameScene extends Phaser.Scene {
             this.levelUp();
         }
     }
+
+    private shutdown() {
+        window.removeEventListener('keydown', this.handleKeyDown);
+    }
+
+    private handleKeyDown = (event: KeyboardEvent) => {
+        if (event.code === 'Space') {
+            this.togglePause();
+        }
+    };
 
     private levelUp() {
         this.playerLevel++;
@@ -292,6 +351,29 @@ export class GameScene extends Phaser.Scene {
 
     public getPlayerLevel() {
         return this.playerLevel;
+    }
+    
+    public getEnemySpawner() {
+        return this.enemySpawner;
+    }
+    
+    public updateWaveCounter(waveNumber: number) {
+        if (!this.waveText || !this.enemySpawner) return;
+        
+        const enemiesKilled = this.enemySpawner.getEnemiesKilledThisWave();
+        const enemiesToKill = this.enemySpawner.getEnemiesToKillPerWave();
+        
+        this.waveText.setText(`Wave: ${waveNumber} (${enemiesKilled}/${enemiesToKill})`);
+    }
+    
+    private updateWaveDisplay() {
+        if (!this.waveText || !this.enemySpawner) return;
+        
+        const currentWave = this.enemySpawner.getCurrentWave();
+        const enemiesKilled = this.enemySpawner.getEnemiesKilledThisWave();
+        const enemiesToKill = this.enemySpawner.getEnemiesToKillPerWave();
+        
+        this.waveText.setText(`Wave: ${currentWave} (${enemiesKilled}/${enemiesToKill})`);
     }
 
     private createBackground() {
@@ -353,6 +435,10 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.pan(targetX, targetY, 100);
     }
 
+    public getMapSize() {
+        return this.scale.width * 6;
+    }
+
     private handleEnemyCollision(enemy1: any, enemy2: any) {
         // Push enemies apart when they collide
         const dx = enemy1.x - enemy2.x;
@@ -377,20 +463,136 @@ export class GameScene extends Phaser.Scene {
         const screenHeight = this.scale.height;
         
         // Q Skill UI
-        this.qSkillUI = this.add.container(screenWidth - 150, screenHeight - 100).setScrollFactor(0);
+        this.qSkillUI = this.add.container(screenWidth - 150, screenHeight - 100).setScrollFactor(0).setDepth(1000);
         const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
-        const qText = this.add.text(0, 0, 'Q', { fontSize: '20px', color: '#ffffff' }).setOrigin(0.5);
+        const qText = this.add.text(0, 0, 'Q', { 
+            fontSize: '24px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
         const qCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
-        const qCooldownText = this.add.text(0, 20, '', { fontSize: '12px', color: '#ffffff' }).setOrigin(0.5);
+        const qCooldownText = this.add.text(0, 20, '', { 
+            fontSize: '14px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
         this.qSkillUI.add([qBg, qText, qCooldownOverlay, qCooldownText]);
         
         // E Skill UI
-        this.eSkillUI = this.add.container(screenWidth - 80, screenHeight - 100).setScrollFactor(0);
+        this.eSkillUI = this.add.container(screenWidth - 80, screenHeight - 100).setScrollFactor(0).setDepth(1000);
         const eBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
-        const eText = this.add.text(0, 0, 'E', { fontSize: '20px', color: '#ffffff' }).setOrigin(0.5);
+        const eText = this.add.text(0, 0, 'E', { 
+            fontSize: '24px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
         const eCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
-        const eCooldownText = this.add.text(0, 20, '', { fontSize: '12px', color: '#ffffff' }).setOrigin(0.5);
+        const eCooldownText = this.add.text(0, 20, '', { 
+            fontSize: '14px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
         this.eSkillUI.add([eBg, eText, eCooldownOverlay, eCooldownText]);
+        
+        // Dash Skill UI (Shift)
+        this.dashSkillUI = this.add.container(screenWidth - 220, screenHeight - 100).setScrollFactor(0).setDepth(1000);
+        const dashBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
+        const dashText = this.add.text(0, 0, '⚡', { 
+            fontSize: '20px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        const dashCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const dashCooldownText = this.add.text(0, 20, '', { 
+            fontSize: '14px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        this.dashSkillUI.add([dashBg, dashText, dashCooldownOverlay, dashCooldownText]);
+    }
+
+    private createCharacterStatsUI() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+        
+        // Position stats UI below and to the left of the level text
+        const levelTextX = screenWidth / 2 - 220;
+        const levelTextY = screenHeight - 60;
+        const statsX = levelTextX - 420; // Move 300 pixels more to the left (was -120, now -420)
+        const statsY = levelTextY - 130; // Move 50 pixels down (was -180, now -130)
+        
+        // Create stats container positioned relative to level text
+        this.statsContainer = this.add.container(statsX, statsY).setScrollFactor(0).setDepth(1000);
+        
+        // Background panel (made taller for all stats including projectiles)
+        const statsBg = this.add.rectangle(0, 0, 220, 180, 0x000000, 0.7);
+        statsBg.setStrokeStyle(2, 0x333333);
+        statsBg.setOrigin(0, 0);
+        
+        // Title
+        const statsTitle = this.add.text(10, 10, 'CHARACTER STATS', {
+            fontSize: '18px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#00ff88',
+            fontStyle: 'bold'
+        });
+        
+        // Damage stat
+        this.damageText = this.add.text(10, 40, 'Damage: 10', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+        
+        // Attack speed stat (bullets per second)
+        this.attackSpeedText = this.add.text(10, 65, 'Attack Speed: 1.0/s', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+        
+        // Movement speed stat
+        this.movementSpeedText = this.add.text(10, 90, 'Move Speed: 200', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+        
+        // Armor stat
+        this.armorText = this.add.text(10, 115, 'Armor: 10 (63.2%)', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+        
+        // Projectile count stat
+        this.projectileCountText = this.add.text(10, 140, 'Projectiles: 1', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+        
+        // Add all elements to container
+        this.statsContainer.add([statsBg, statsTitle, this.damageText, this.attackSpeedText, this.movementSpeedText, this.armorText, this.projectileCountText]);
+    }
+
+    private updateCharacterStats() {
+        if (!this.player || !this.damageText || !this.attackSpeedText || !this.movementSpeedText || !this.armorText || !this.projectileCountText) return;
+        
+        // Get player stats
+        const damage = this.player.getAttackDamage();
+        const attackSpeed = (1000 / this.player.getAttackCooldown()).toFixed(1); // Convert cooldown to attacks per second
+        const moveSpeed = this.player.getMoveSpeed();
+        const armor = this.player.getArmor();
+        const damageReduction = this.player.getDamageReduction().toFixed(1);
+        const projectileCount = this.player.getProjectileCount();
+        
+        // Update text displays
+        this.damageText.setText(`Damage: ${damage}`);
+        this.attackSpeedText.setText(`Attack Speed: ${attackSpeed}/s`);
+        this.movementSpeedText.setText(`Move Speed: ${moveSpeed}`);
+        this.armorText.setText(`Armor: ${armor} (${damageReduction}%)`);
+        this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
     }
 
     private updateSkillUI() {
@@ -401,10 +603,10 @@ export class GameScene extends Phaser.Scene {
         const qCooldownOverlay = this.qSkillUI.list[2] as Phaser.GameObjects.Rectangle;
         const qCooldownText = this.qSkillUI.list[3] as Phaser.GameObjects.Text;
         
-        if (this.playerLevel < 2) {
+        if (!player.isQSkillUnlocked()) {
             // Disabled state
             qCooldownOverlay.setAlpha(0.8);
-            qCooldownText.setText('Lv2');
+            qCooldownText.setText(`Lv${SKILL_UNLOCK_LEVELS.Q}`);
         } else if (player.getQCooldownTimer() > 0) {
             // On cooldown
             const cooldownPercent = player.getQCooldownTimer() / player.getQCooldown();
@@ -420,10 +622,10 @@ export class GameScene extends Phaser.Scene {
         const eCooldownOverlay = this.eSkillUI.list[2] as Phaser.GameObjects.Rectangle;
         const eCooldownText = this.eSkillUI.list[3] as Phaser.GameObjects.Text;
         
-        if (this.playerLevel < 2) {
+        if (!player.isESkillUnlocked()) {
             // Disabled state
             eCooldownOverlay.setAlpha(0.8);
-            eCooldownText.setText('Lv2');
+            eCooldownText.setText(`Lv${SKILL_UNLOCK_LEVELS.E}`);
         } else if (player.getECooldownTimer() > 0) {
             // On cooldown
             const cooldownPercent = player.getECooldownTimer() / player.getECooldown();
@@ -433,6 +635,25 @@ export class GameScene extends Phaser.Scene {
             // Ready
             eCooldownOverlay.setAlpha(0);
             eCooldownText.setText('');
+        }
+        
+        // Update Dash skill UI
+        const dashCooldownOverlay = this.dashSkillUI.list[2] as Phaser.GameObjects.Rectangle;
+        const dashCooldownText = this.dashSkillUI.list[3] as Phaser.GameObjects.Text;
+        
+        if (!player.isDashSkillUnlocked()) {
+            // Disabled state
+            dashCooldownOverlay.setAlpha(0.8);
+            dashCooldownText.setText(`Lv${SKILL_UNLOCK_LEVELS.DASH}`);
+        } else if (player.getDashCooldownTimer() > 0) {
+            // On cooldown
+            const cooldownPercent = player.getDashCooldownTimer() / player.getDashCooldown();
+            dashCooldownOverlay.setAlpha(0.8 * cooldownPercent);
+            dashCooldownText.setText(Math.ceil(player.getDashCooldownTimer() / 1000).toString());
+        } else {
+            // Ready
+            dashCooldownOverlay.setAlpha(0);
+            dashCooldownText.setText('');
         }
     }
 
@@ -457,5 +678,30 @@ export class GameScene extends Phaser.Scene {
             this.scene.restart();
         });
     }
+    
+    private createPauseUI() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
 
+        const overlay = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.5).setOrigin(0);
+
+        const pauseText = this.add.text(screenWidth / 2, screenHeight / 2, 'Game Paused', {
+            fontSize: '48px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+        }).setOrigin(0.5);
+
+        this.pauseContainer = this.add.container(0, 0, [overlay, pauseText]);
+        this.pauseContainer.setScrollFactor(0).setDepth(3000).setVisible(false);
+    }
+    
+    private togglePause() {
+        if (this.scene.isPaused()) {
+            this.scene.resume();
+            this.pauseContainer.setVisible(false);
+        } else {
+            this.scene.pause();
+            this.pauseContainer.setVisible(true);
+        }
+    }
 } 

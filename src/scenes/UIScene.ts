@@ -25,20 +25,22 @@ export class UIScene extends Phaser.Scene {
         const screenHeight = this.scale.height;
         
         // Create background overlay
-        const overlay = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.8);
+        const overlay = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.8).setDepth(2000);
         
         // Level up title
         const title = this.add.text(screenWidth / 2, screenHeight * 0.2, `LEVEL ${this.level}!`, {
-            fontSize: '64px',
+            fontSize: '72px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ff88',
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(2001);
         
         // Subtitle
         const subtitle = this.add.text(screenWidth / 2, screenHeight * 0.3, 'Choose your upgrade:', {
-            fontSize: '32px',
+            fontSize: '36px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(2001);
         
         // Get upgrade options
         const upgrades = this.upgradeManager.getRandomUpgrades(3);
@@ -56,7 +58,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     private createUpgradeCard(upgrade: any, x: number, y: number): Phaser.GameObjects.Container {
-        const container = this.add.container(x, y);
+        const container = this.add.container(x, y).setDepth(2002);
         
         // Card background (bigger and more vibrant)
         const background = this.add.rectangle(0, 0, 320, 400, 0x1a1a2e);
@@ -73,21 +75,24 @@ export class UIScene extends Phaser.Scene {
         
         // Upgrade title (bigger and colored by rarity)
         const title = this.add.text(0, -140, upgrade.name, {
-            fontSize: '24px',
+            fontSize: '28px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: rarityColors[upgrade.rarity] || '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
         // Upgrade description (bigger text)
         const description = this.add.text(0, -80, upgrade.description, {
-            fontSize: '18px',
+            fontSize: '20px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#e0e0e0',
             wordWrap: { width: 280 }
         }).setOrigin(0.5);
         
         // Rarity indicator
         const rarityText = this.add.text(0, 140, upgrade.rarity.toUpperCase(), {
-            fontSize: '16px',
+            fontSize: '18px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: rarityColors[upgrade.rarity] || '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
@@ -120,7 +125,7 @@ export class UIScene extends Phaser.Scene {
     private selectUpgrade(upgrade: any) {
         // Apply the upgrade
         this.upgradeManager.applyUpgrade(upgrade);
-        
+
         // Resume the game
         this.scene.resume('GameScene');
         this.scene.stop();
@@ -129,5 +134,10 @@ export class UIScene extends Phaser.Scene {
     private setupInput() {
         // Only allow clicking on upgrade cards - no auto-selection
         // The UI will stay until player makes a choice
+
+        this.input.keyboard.on('keydown-SPACE', () => {
+            this.scene.resume('GameScene');
+            this.scene.stop();
+        });
     }
 } 

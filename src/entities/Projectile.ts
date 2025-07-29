@@ -5,11 +5,14 @@ export class Projectile extends Phaser.GameObjects.Container {
     private velocityX: number = 0;
     private velocityY: number = 0;
     private damage: number = 10;
-    private speed: number = 300;
+    private projectileSpeed: number = 500;
     private piercing: boolean = false;
     private homing: boolean = false;
     private lifetime: number = 3000; // 3 seconds
     private age: number = 0;
+    
+    // Track which enemies this projectile has already hit (for piercing)
+    private hitEnemies: Set<any> = new Set();
 
     constructor(
         scene: Phaser.Scene,
@@ -24,7 +27,7 @@ export class Projectile extends Phaser.GameObjects.Container {
         super(scene, x, y);
         
         this.damage = damage;
-        this.speed = speed;
+        this.projectileSpeed = speed;
         this.piercing = piercing;
         this.homing = homing;
         
@@ -39,6 +42,8 @@ export class Projectile extends Phaser.GameObjects.Container {
         // Add physics body
         scene.physics.add.existing(this);
         const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(8, 8);
+        body.setOffset(-4, -4);
         body.setVelocity(this.velocityX, this.velocityY);
         
         scene.add.existing(this);
@@ -66,7 +71,8 @@ export class Projectile extends Phaser.GameObjects.Container {
         this.y += this.velocityY * (delta / 1000);
         
         // Destroy if out of map bounds
-        const mapBounds = 2000; // Large map boundary
+        const gameScene = this.scene as any;
+        const mapBounds = gameScene.getMapSize() / 2;
         if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
             this.destroy();
         }
@@ -106,9 +112,9 @@ export class Projectile extends Phaser.GameObjects.Container {
                     
                     // Limit speed
                     const currentSpeed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
-                    if (currentSpeed > this.speed) {
-                        this.velocityX = (this.velocityX / currentSpeed) * this.speed;
-                        this.velocityY = (this.velocityY / currentSpeed) * this.speed;
+                    if (currentSpeed > this.projectileSpeed) {
+                        this.velocityX = (this.velocityX / currentSpeed) * this.projectileSpeed;
+                        this.velocityY = (this.velocityY / currentSpeed) * this.projectileSpeed;
                     }
                 }
             }
@@ -130,21 +136,39 @@ export class Projectile extends Phaser.GameObjects.Container {
     }
 
     private onEnemyHit(projectile: any, enemy: any) {
+        // Check if this enemy has already been hit by this projectile
+        if (this.hitEnemies.has(enemy)) {
+            return; // Skip if already hit
+        }
+        
+        // Mark this enemy as hit
+        this.hitEnemies.add(enemy);
+        
         // Deal damage to enemy
         enemy.takeDamage(this.damage);
         
-        // Add knockback effect
+        // Add knockback effect using physics velocity instead of teleportation
         const dx = enemy.x - this.x;
         const dy = enemy.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance > 0) {
-            const knockbackForce = 10;
+            const knockbackForce = 50;
             const knockbackX = (dx / distance) * knockbackForce;
             const knockbackY = (dy / distance) * knockbackForce;
             
-            enemy.x += knockbackX;
-            enemy.y += knockbackY;
+            // Use physics body for smooth knockback movement
+            const body = enemy.body as Phaser.Physics.Arcade.Body;
+            if (body) {
+                body.setVelocity(knockbackX, knockbackY);
+                
+                // Reset velocity after a short time to prevent endless knockback
+                enemy.scene.time.delayedCall(200, () => {
+                    if (enemy.active && body) {
+                        body.setVelocity(0, 0);
+                    }
+                });
+            }
         }
         
         // Destroy projectile if not piercing

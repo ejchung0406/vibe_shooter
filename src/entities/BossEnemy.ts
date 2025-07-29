@@ -1,0 +1,119 @@
+import { BaseEnemy } from './BaseEnemy';
+import { EnemyProjectile } from './EnemyProjectile';
+
+export class BossEnemy extends BaseEnemy {
+    private singleShotTimer: number = 0;
+    private singleShotCooldown: number = 1000; // 1 second
+
+    private barrageTimer: number = 0;
+    private barrageCooldown: number = 5000; // 5 seconds
+    private barrageShotCount: number = 18;
+
+    constructor(scene: Phaser.Scene, x: number, y: number) {
+        super(scene, x, y);
+        
+        // Boss properties
+        this.baseHealthMultiplier = 100; // 100x health
+        this.moveSpeed = 30; // Slower than tank
+        this.damage = 25; // High damage
+        this.xpValue = 500; // Lots of XP
+        
+        // Make boss 10x bigger
+        this.setScale(10);
+        
+        // Recalculate health with new multiplier
+        this.calculateHealth();
+        
+        // Update health bar for boss
+        this.createHealthBar();
+    }
+
+    protected setupHitbox() {
+        // Fix hitbox after scaling - make it proportional to visual size
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            body.setSize(18, 18);
+            body.setOffset(-9, -9);
+        }
+    }
+
+    protected customUpdate(time: number, delta: number): void {
+        this.singleShotTimer += delta;
+        this.barrageTimer += delta;
+
+        // Single targeted shot
+        if (this.singleShotTimer >= this.singleShotCooldown) {
+            this.shootTargetedMissile();
+            this.singleShotTimer = 0;
+        }
+
+        // All-around barrage
+        if (this.barrageTimer >= this.barrageCooldown) {
+            this.shootBarrage();
+            this.barrageTimer = 0;
+        }
+    }
+
+    protected getEnemyColor(): number {
+        return 0x8B0000; // Dark red for boss
+    }
+
+    private shootTargetedMissile(): void {
+        const gameScene = this.scene as any;
+        const player = gameScene.getPlayer();
+
+        if (player) {
+            const angle = Phaser.Math.Angle.Between(this.x, this.y, player.getX(), player.getY());
+            const missile = new EnemyProjectile(
+                this.scene,
+                this.x,
+                this.y,
+                angle,
+                this.damage,
+                300 // Missile speed
+            );
+            gameScene.getEnemyProjectiles().add(missile);
+        }
+    }
+
+    private shootBarrage(): void {
+        const angleStep = (Math.PI * 2) / this.barrageShotCount;
+        
+        for (let i = 0; i < this.barrageShotCount; i++) {
+            const angle = angleStep * i;
+            
+            const missile = new EnemyProjectile(
+                this.scene,
+                this.x,
+                this.y,
+                angle,
+                this.damage,
+                200 // Slower barrage missiles
+            );
+            
+            const gameScene = this.scene as any;
+            gameScene.getEnemyProjectiles().add(missile);
+        }
+    }
+
+    public die(): void {
+        // Notify enemy spawner that boss is defeated
+        const gameScene = this.scene as any;
+        const enemySpawner = gameScene.getEnemySpawner();
+        if (enemySpawner) {
+            enemySpawner.onBossDefeated();
+        }
+        
+        // Call parent die method
+        super.die();
+        
+        // TODO: Drop special items here
+        this.dropItems();
+    }
+
+    private dropItems(): void {
+        // Placeholder for item drops
+        // This will be implemented when item system is added
+        console.log('Boss defeated! Items would drop here.');
+    }
+} 

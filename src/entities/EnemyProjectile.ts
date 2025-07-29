@@ -33,6 +33,8 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         // Add physics body
         scene.physics.add.existing(this);
         const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(6, 6);
+        body.setOffset(-3, -3);
         body.setVelocity(this.velocityX, this.velocityY);
         
         scene.add.existing(this);
@@ -79,21 +81,11 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         // Deal damage to player
         player.takeDamage(this.damage);
         
-        // Add knockback effect to player (reduced by player's resistance)
+        // Apply knockback to player
         const dx = player.x - this.x;
         const dy = player.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > 0) {
-            const baseKnockbackForce = 120;
-            const knockbackResistance = player.getKnockbackResistance();
-            const knockbackForce = baseKnockbackForce * knockbackResistance;
-            const knockbackX = (dx / distance) * knockbackForce;
-            const knockbackY = (dy / distance) * knockbackForce;
-            
-            player.x += knockbackX;
-            player.y += knockbackY;
-        }
+        const knockbackForce = 250;
+        player.applyKnockback(dx, dy, knockbackForce);
         
         // Destroy projectile
         this.destroy();
