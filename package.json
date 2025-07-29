@@ -9,14 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
     "phaser": "^3.70.0"
   },
   "devDependencies": {
-    "vite": "^5.0.0",
+    "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
-    "@types/node": "^20.0.0"
+    "vite": "^5.0.0"
   },
-  "keywords": ["game", "roguelike", "phaser", "action"],
+  "keywords": [
+    "game",
+    "roguelike",
+    "phaser",
+    "action"
+  ],
   "author": "Your Name",
   "license": "MIT"
-} 
+}
