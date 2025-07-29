@@ -791,7 +791,7 @@ export class GameScene extends Phaser.Scene {
         const fText = this.add.text(0, 0, 'F', { 
             fontSize: '24px', 
             fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#555555' 
+            color: '#ffffff' 
         }).setOrigin(0.5);
         const fCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
         const fCooldownText = this.add.text(0, 20, '', {
