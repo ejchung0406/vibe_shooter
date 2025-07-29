@@ -31,6 +31,8 @@ export class Player extends Phaser.GameObjects.Container {
     private healthBar!: Phaser.GameObjects.Rectangle;
     private healthBarBg!: Phaser.GameObjects.Rectangle;
     private isBeingKnockedBack: boolean = false;
+    private explosiveDamageMultiplier: number = 1;
+    private explosiveBossDamageMultiplier: number = 1;
     
     // Attack properties
     private comboCounter: number = 0;
@@ -259,7 +261,9 @@ export class Player extends Phaser.GameObjects.Container {
                     this.attackDamage * 2, // Double damage
                     this.projectileSpeed,
                     angle,
-                    this.piercing
+                    this.piercing,
+                    this.explosiveDamageMultiplier,
+                    this.explosiveBossDamageMultiplier
                 );
                 gameScene.getProjectiles().add(projectile);
             } else {
@@ -822,5 +826,21 @@ export class Player extends Phaser.GameObjects.Container {
 
     public setQSkillHomingMultiplier(multiplier: number) {
         this.qSkillHomingMultiplier = multiplier;
+    }
+
+    public getExplosiveDamageMultiplier() {
+        return this.explosiveDamageMultiplier;
+    }
+
+    public setExplosiveDamageMultiplier(multiplier: number) {
+        this.explosiveDamageMultiplier = multiplier;
+    }
+
+    public getExplosiveBossDamageMultiplier() {
+        return this.explosiveBossDamageMultiplier;
+    }
+
+    public setExplosiveBossDamageMultiplier(multiplier: number) {
+        this.explosiveBossDamageMultiplier = multiplier;
     }
 } 

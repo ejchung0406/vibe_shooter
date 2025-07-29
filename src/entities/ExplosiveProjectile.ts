@@ -20,7 +20,9 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         damage: number,
         speed: number,
         angle: number,
-        piercing: boolean = false
+        piercing: boolean = false,
+        explosiveDamageMultiplier: number = 1,
+        explosiveBossDamageMultiplier: number = 1
     ) {
         super(scene, x, y);
         
@@ -36,6 +38,9 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         // Set velocity based on angle
         this.velocityX = Math.cos(angle) * speed;
         this.velocityY = Math.sin(angle) * speed;
+
+        this.explosiveDamageMultiplier = explosiveDamageMultiplier;
+        this.explosiveBossDamageMultiplier = explosiveBossDamageMultiplier;
         
         // Add physics body
         scene.physics.add.existing(this);
@@ -178,21 +183,5 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
 
     public isPiercing() {
         return this.piercing;
-    }
-
-    public getExplosiveDamageMultiplier() {
-        return this.explosiveDamageMultiplier;
-    }
-
-    public setExplosiveDamageMultiplier(multiplier: number) {
-        this.explosiveDamageMultiplier = multiplier;
-    }
-
-    public getExplosiveBossDamageMultiplier() {
-        return this.explosiveBossDamageMultiplier;
-    }
-
-    public setExplosiveBossDamageMultiplier(multiplier: number) {
-        this.explosiveBossDamageMultiplier = multiplier;
-    }
+    }  
 } 
