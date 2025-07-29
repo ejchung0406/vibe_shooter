@@ -1,5 +1,7 @@
 import { BaseEnemy } from './BaseEnemy';
 import { EnemyProjectile } from './EnemyProjectile';
+import { Item } from './Item';
+import { ItemManager } from '../systems/ItemManager';
 
 export class BossEnemy extends BaseEnemy {
     private singleShotTimer: number = 0;
@@ -108,21 +110,27 @@ export class BossEnemy extends BaseEnemy {
     public die(): void {
         // Notify enemy spawner that boss is defeated
         const gameScene = this.scene as any;
+        gameScene.showBossClearedMessage();
         const enemySpawner = gameScene.getEnemySpawner();
         if (enemySpawner) {
             enemySpawner.onBossDefeated();
         }
         
+        this.dropItems();
+
         // Call parent die method
         super.die();
-        
-        // TODO: Drop special items here
-        this.dropItems();
     }
 
     private dropItems(): void {
-        // Placeholder for item drops
-        // This will be implemented when item system is added
-        console.log('Boss defeated! Items would drop here.');
+        const gameScene = this.scene as any;
+        const itemManager = gameScene.getItemManager();
+        if (itemManager) {
+            const itemData = itemManager.getRandomItem();
+            if (itemData) {
+                const item = new Item(this.scene, this.x, this.y, itemData);
+                gameScene.addItem(item);
+            }
+        }
     }
 } 

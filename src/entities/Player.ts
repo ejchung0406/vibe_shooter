@@ -2,12 +2,16 @@ import Phaser from 'phaser';
 import { QProjectile } from './QProjectile';
 import { ExplosiveProjectile } from './ExplosiveProjectile';
 import { Projectile } from './Projectile';
+import { Pet } from './Pet';
+import { GameScene } from '../scenes/GameScene';
+import { Item, ItemData } from './Item';
 
 export const SKILL_UNLOCK_LEVELS = {
-    Q: 1,
-    E: 2,
-    DASH: 3,
-    R: 7,
+    Q: 2,
+    E: 3,
+    DASH: 5,
+    R: 9,
+    F: 7,
 };
 
 export class Player extends Phaser.GameObjects.Container {
@@ -53,6 +57,7 @@ export class Player extends Phaser.GameObjects.Container {
     private comboThreshold: number = 3;
     private hasSpreadAttack: boolean = false; // Spread attack upgrade
     private hasComboMaster: boolean = false; // Combo master upgrade
+    private hasAdvancedCombo: boolean = false; // Advanced combo upgrade
     private shotCounter: number = 0; // Track shots for combo
     private qSkillHomingMultiplier: number = 1;
     private rProjectileMultiplier: number = 1;
@@ -62,22 +67,26 @@ export class Player extends Phaser.GameObjects.Container {
     private eSkillUnlocked: boolean = false;
     private dashSkillUnlocked: boolean = false; // New dash skill
     private rSkillUnlocked: boolean = false;
+    private fSkillUnlocked: boolean = false;
     private qCooldown: number = 3000; // 3 seconds
     private eCooldown: number = 8000; // 8 seconds
     private readonly originalECooldown: number;
     private dashCooldown: number = 2000; // 2 seconds
     private rCooldown: number = 10000; // 10 seconds
     private readonly originalRCooldown: number;
+    private fCooldown: number = 40000; // 40 seconds
     private qCooldownTimer: number = 0;
     private eCooldownTimer: number = 0;
     private dashCooldownTimer: number = 0; // New dash cooldown timer
     private rCooldownTimer: number = 0;
+    private fCooldownTimer: number = 0;
     
     // Shield
     private shieldActive: boolean = false;
     private shieldDuration: number = 2000; // 2 seconds
     private shieldTimer: number = 0;
     private shieldSprite: Phaser.GameObjects.Arc | null = null;
+    private shieldAbsorbs: boolean = false;
     
     // Dash properties
     private isDashing: boolean = false;
@@ -91,6 +100,8 @@ export class Player extends Phaser.GameObjects.Container {
     private dashTrailPoints: { x: number, y: number, alpha: number }[] = [];
     private maxTrailPoints: number = 15;
     private knockbackResistance: number = 0.3; // Reduce knockback to 30% of original
+    private items: ItemData[] = [];
+    private maxItems: number = 6;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -282,7 +293,7 @@ export class Player extends Phaser.GameObjects.Container {
         if (this.projectileCount === 1) {
             // Single projectile - check for combo
             this.shotCounter++;
-            const isComboShot = this.hasComboMaster && this.shotCounter % 3 === 0;
+            const isComboShot = this.hasAdvancedCombo ? this.shotCounter % 2 === 0 : (this.hasComboMaster && this.shotCounter % 3 === 0);
             
             if (isComboShot) {
                 // Create explosive projectile
@@ -319,7 +330,7 @@ export class Player extends Phaser.GameObjects.Container {
         } else {
             // Multi-projectile attacks - increment counter for combo tracking
             this.shotCounter++;
-            const isComboShot = this.hasComboMaster && this.shotCounter % 3 === 0;
+            const isComboShot = this.hasAdvancedCombo ? this.shotCounter % 2 === 0 : (this.hasComboMaster && this.shotCounter % 3 === 0);
             
             this.performBurstAttack(scene, gameScene, angle, isComboShot);
         }
@@ -410,11 +421,16 @@ export class Player extends Phaser.GameObjects.Container {
 
     // Upgrade methods
     public increaseAttackSpeed(amount: number) {
-        this.attackCooldown = Math.max(100, this.attackCooldown - amount);
+        this.attackCooldown *= (1 - amount);
+        this.attackCooldown = Math.max(100, this.attackCooldown);
     }
 
     public increaseDamage(amount: number) {
         this.attackDamage += amount;
+    }
+
+    public increaseMoveSpeed(amount: number) {
+        this.moveSpeed *= (1 + amount);
     }
 
     public increaseProjectileCount(amount: number) {
@@ -426,17 +442,27 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     public unlockSkills(level: number) {
-        if (level >= SKILL_UNLOCK_LEVELS.Q) {
+        const gameScene = this.scene as any;
+
+        if (level >= SKILL_UNLOCK_LEVELS.Q && !this.qSkillUnlocked) {
             this.qSkillUnlocked = true;
+            gameScene.showSkillUnlockMessage('Q Skill Unlocked!');
         }
-        if (level >= SKILL_UNLOCK_LEVELS.E) {
+        if (level >= SKILL_UNLOCK_LEVELS.E && !this.eSkillUnlocked) {
             this.eSkillUnlocked = true;
+            gameScene.showSkillUnlockMessage('E Skill Unlocked!');
         }
-        if (level >= SKILL_UNLOCK_LEVELS.DASH) {
+        if (level >= SKILL_UNLOCK_LEVELS.DASH && !this.dashSkillUnlocked) {
             this.dashSkillUnlocked = true;
+            gameScene.showSkillUnlockMessage('Dash Skill Unlocked!');
         }
-        if (level >= SKILL_UNLOCK_LEVELS.R) {
+        if (level >= SKILL_UNLOCK_LEVELS.R && !this.rSkillUnlocked) {
             this.rSkillUnlocked = true;
+            gameScene.showSkillUnlockMessage('R Skill Unlocked!');
+        }
+        if (level >= SKILL_UNLOCK_LEVELS.F && !this.fSkillUnlocked) {
+            this.fSkillUnlocked = true;
+            gameScene.showSkillUnlockMessage('F Skill Unlocked!');
         }
     }
     
@@ -546,6 +572,9 @@ export class Player extends Phaser.GameObjects.Container {
         }
         if (this.rCooldownTimer > 0) {
             this.rCooldownTimer -= delta;
+        }
+        if (this.fCooldownTimer > 0) {
+            this.fCooldownTimer -= delta;
         }
     }
     
@@ -779,6 +808,14 @@ export class Player extends Phaser.GameObjects.Container {
         this.projectileSpeed += amount;
     }
 
+    public getProjectileSpeed(): number {
+        return this.projectileSpeed;
+    }
+
+    public setShieldAbsorbs(absorbs: boolean) {
+        this.shieldAbsorbs = absorbs;
+    }
+
     public getX() {
         return this.x;
     }
@@ -796,7 +833,14 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     public takeDamage(damage: number) {
-        if (this.isInvulnerable || this.shieldActive) return;
+        if (this.isInvulnerable) return;
+
+        if (this.shieldActive) {
+            if (this.shieldAbsorbs) {
+                this.heal(damage * 0.5);
+            }
+            return;
+        }
         
         // Apply armor damage reduction using logarithmic formula
         const damageReduction = this.getDamageReduction(); // Percentage reduction
@@ -920,6 +964,23 @@ export class Player extends Phaser.GameObjects.Container {
         this.hasComboMaster = true;
     }
     
+    public enableAdvancedCombo() {
+        this.hasAdvancedCombo = true;
+    }
+
+    public addItem(item: Item) {
+        if (this.items.length >= this.maxItems) {
+            return;
+        }
+        this.items.push(item.getItemData());
+        item.applyEffect(this);
+        item.destroy();
+    }
+
+    public getItems(): ItemData[] {
+        return this.items;
+    }
+
     // Getter methods for character stats display
     public getAttackDamage(): number {
         return this.attackDamage;
@@ -1057,11 +1118,35 @@ export class Player extends Phaser.GameObjects.Container {
         return this.rCooldownTimer;
     }
 
+    public isFSkillUnlocked(): boolean {
+        return this.fSkillUnlocked;
+    }
+
+    public getFCooldown(): number {
+        return this.fCooldown;
+    }
+
     public setRProjectileMultiplier(multiplier: number) {
         this.rProjectileMultiplier = multiplier;
     }
 
     public useFSkill() {
-        // Placeholder for F skill
+        if (!this.fSkillUnlocked || this.fCooldownTimer > 0) {
+            return;
+        }
+
+        this.fCooldownTimer = this.fCooldown;
+
+        const gameScene = this.scene as GameScene;
+        const pet = new Pet(gameScene, this.x, this.y, this, 20000);
+        gameScene.addPet(pet);
+    }
+
+    public getFCooldownTimer() {
+        return this.fCooldownTimer;
+    }
+
+    public increaseAttackDamage(multiplier: number) {
+        this.attackDamage *= multiplier;
     }
 } 

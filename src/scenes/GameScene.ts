@@ -6,14 +6,23 @@ import { Projectile } from '../entities/Projectile';
 import { UpgradeManager } from '../systems/UpgradeManager';
 import { EnemySpawner } from '../systems/EnemySpawner';
 import { SKILL_UNLOCK_LEVELS } from '../entities/Player';
+import { Pet } from '../entities/Pet';
+import { ItemManager } from '../systems/ItemManager';
+import { Item, ItemData } from '../entities/Item';
+import { SkillManager, SkillData } from '../systems/SkillManager';
 
 export class GameScene extends Phaser.Scene {
     private player!: Player;
     private enemies!: Phaser.GameObjects.Group;
     private projectiles!: Phaser.GameObjects.Group;
     private enemyProjectiles!: Phaser.GameObjects.Group;
+    private pets!: Phaser.GameObjects.Group;
+    private items!: Phaser.GameObjects.Group;
     private upgradeManager!: UpgradeManager;
     private enemySpawner!: EnemySpawner;
+    private itemManager!: ItemManager;
+    private skillManager!: SkillManager;
+    private tooltip!: Phaser.GameObjects.Container;
     
     // Game state
     private gameTime: number = 0;
@@ -34,6 +43,7 @@ export class GameScene extends Phaser.Scene {
     private dashSkillUI!: Phaser.GameObjects.Container; // Dash skill UI
     private rSkillUI!: Phaser.GameObjects.Container;
     private fSkillUI!: Phaser.GameObjects.Container;
+    private itemUI!: Phaser.GameObjects.Container;
     
     // Character stats UI
     private statsContainer!: Phaser.GameObjects.Container;
@@ -71,11 +81,15 @@ export class GameScene extends Phaser.Scene {
         // Initialize game systems
         this.upgradeManager = new UpgradeManager(this);
         this.enemySpawner = new EnemySpawner(this);
+        this.itemManager = new ItemManager();
+        this.skillManager = new SkillManager();
         
         // Create groups
         this.enemies = this.add.group();
         this.projectiles = this.add.group();
         this.enemyProjectiles = this.add.group();
+        this.pets = this.add.group();
+        this.items = this.add.group();
         
         // Add physics to enemy group
         this.physics.add.collider(this.enemies, this.enemies, this.handleEnemyCollision, undefined, this);
@@ -84,6 +98,8 @@ export class GameScene extends Phaser.Scene {
         this.player = new Player(this, 0, 0);
         this.add.existing(this.player);
         
+        this.physics.add.overlap(this.player, this.items, this.handleItemPickup, undefined, this);
+
         // Setup camera
         this.setupCamera();
         
@@ -129,6 +145,10 @@ export class GameScene extends Phaser.Scene {
             projectile.update(time, delta);
         });
         
+        this.pets.getChildren().forEach((pet: any) => {
+            pet.update(time, delta);
+        });
+
         // Update UI
         this.updateUI();
         this.updateSkillUI();
@@ -142,6 +162,78 @@ export class GameScene extends Phaser.Scene {
         
         // Check for level up
         this.checkLevelUp();
+    }
+
+    private handleItemPickup(player: any, item: any) {
+        player.addItem(item);
+        this.showItemCollectedPopup(item.getItemData());
+        this.updateItemUI();
+    }
+
+    public showBossClearedMessage() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const message = this.add.text(screenWidth / 2, screenHeight / 2, 'Boss Cleared! Take the item.', {
+            fontSize: '48px',
+            color: '#00ff00',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(5000);
+
+        this.tweens.add({
+            targets: message,
+            alpha: 0,
+            y: message.y - 100,
+            duration: 5000,
+            ease: 'Power2',
+            onComplete: () => {
+                message.destroy();
+            }
+        });
+    }
+
+    public showItemTooltip(x: number, y: number, itemData: ItemData) {
+        const text = `${itemData.name}\n${itemData.description}`;
+        this.showTooltip(x, y, text, false);
+    }
+
+    public hideItemTooltip() {
+        if (this.tooltip) {
+            this.tooltip.destroy();
+        }
+    }
+
+    private showTooltip(x: number, y: number, text: string, isSkill: boolean) {
+        this.hideItemTooltip();
+        const tooltipText = this.add.text(0, 0, text, {
+            fontSize: '28px',
+            color: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 5, y: 5 }
+        });
+
+        if (isSkill) {
+            tooltipText.setOrigin(1, 1);
+        }
+
+        this.tooltip = this.add.container(x, y, [tooltipText]);
+        this.tooltip.setDepth(5000);
+        if (isSkill) {
+            this.tooltip.setScrollFactor(0);
+        }
+    }
+
+    private showSkillTooltip(skillId: string) {
+        const skillData = this.skillManager.getSkillData(skillId);
+        if (skillData) {
+            let text = skillData.description;
+            if (skillData.damageMultiplier) {
+                text += `\nDamage: ${skillData.damageMultiplier * 100}%`;
+            }
+            this.showTooltip(this.input.x, this.input.y, text, true);
+        }
     }
 
     private handleMovement() {
@@ -257,6 +349,53 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    private updateItemUI() {
+        this.itemUI.removeAll(true);
+        const items = this.player.getItems();
+        items.forEach((item, index) => {
+            const rarityColors = {
+                common: 0xffffff,
+                rare: 0x0000ff,
+                epic: 0x800080,
+                legendary: 0xffa500
+            };
+            const color = rarityColors[item.rarity] || 0xffffff;
+
+            const itemSprite = this.add.rectangle(index * 40, 0, 30, 30, color)
+                .setInteractive()
+                .on('pointerover', (pointer: Phaser.Input.Pointer) => this.showItemTooltip(pointer.worldX, pointer.worldY, item))
+                .on('pointerout', () => this.hideItemTooltip());
+            this.itemUI.add(itemSprite);
+        });
+    }
+
+    private showItemCollectedPopup(itemData: ItemData) {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const popup = this.add.container(screenWidth / 2, screenHeight / 2);
+        const background = this.add.rectangle(0, 0, 300, 100, 0x000000, 0.8);
+        const text = this.add.text(0, 0, `Item Obtained!\n${itemData.name}`, {
+            fontSize: '24px',
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        popup.add([background, text]);
+        popup.setScrollFactor(0).setDepth(6000);
+
+        this.tweens.add({
+            targets: popup,
+            alpha: 0,
+            y: popup.y - 50,
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => {
+                popup.destroy();
+            }
+        });
+    }
+
     // Input keys
     private wKey!: Phaser.Input.Keyboard.Key;
     private sKey!: Phaser.Input.Keyboard.Key;
@@ -337,6 +476,16 @@ export class GameScene extends Phaser.Scene {
         this.playerXP -= this.xpToNextLevel;
         this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.2); // Increase XP requirement
         
+        // --- Level Up Bonuses ---
+        // 1. Fixed armor gain
+        this.player.increaseArmor(5); 
+
+        // 2. Heal 20% of max health
+        this.player.heal(this.player.getMaxHealth() * 0.2); 
+
+        // 3. Increase attack damage by 1.2x
+        this.player.increaseAttackDamage(1.2);
+
         // Unlock skills
         this.player.unlockSkills(this.playerLevel);
         
@@ -349,6 +498,31 @@ export class GameScene extends Phaser.Scene {
         
         // Pause the game
         this.scene.pause();
+    }
+
+    public showSkillUnlockMessage(message: string) {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const skillUnlockText = this.add.text(screenWidth / 2, screenHeight / 2 - 100, message, {
+            fontSize: '32px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#00ff00',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(2000);
+
+        this.tweens.add({
+            targets: skillUnlockText,
+            alpha: 0,
+            y: skillUnlockText.y - 50,
+            duration: 3000,
+            ease: 'Power2',
+            onComplete: () => {
+                skillUnlockText.destroy();
+            }
+        });
     }
 
     private checkLevelUp() {
@@ -371,6 +545,14 @@ export class GameScene extends Phaser.Scene {
 
     public getEnemyProjectiles() {
         return this.enemyProjectiles;
+    }
+
+    public getItemManager(): ItemManager {
+        return this.itemManager;
+    }
+
+    public addItem(item: Item) {
+        this.items.add(item);
     }
 
     public getGameTime() {
@@ -499,8 +681,14 @@ export class GameScene extends Phaser.Scene {
         const skillSpacing = 70;
         let startX = screenWidth - (skillSpacing * 5);
 
+        // Item UI (bottom left)
+        this.itemUI = this.add.container(20, screenHeight - 40).setScrollFactor(0).setDepth(1000);
+
         // Dash Skill UI (Shift)
-        this.dashSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        this.dashSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
+            .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
+            .on('pointerover', () => this.showSkillTooltip('DASH'))
+            .on('pointerout', this.hideItemTooltip);
         const dashBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const dashText = this.add.text(0, 0, '⚡', { 
             fontSize: '20px', 
@@ -517,7 +705,10 @@ export class GameScene extends Phaser.Scene {
         startX += skillSpacing;
 
         // Q Skill UI
-        this.qSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        this.qSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
+            .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
+            .on('pointerover', () => this.showSkillTooltip('Q'))
+            .on('pointerout', this.hideItemTooltip);
         const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const qText = this.add.text(0, 0, 'Q', { 
             fontSize: '24px', 
@@ -534,7 +725,10 @@ export class GameScene extends Phaser.Scene {
         startX += skillSpacing;
         
         // E Skill UI
-        this.eSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        this.eSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
+            .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
+            .on('pointerover', () => this.showSkillTooltip('E'))
+            .on('pointerout', this.hideItemTooltip);
         const eBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const eText = this.add.text(0, 0, 'E', { 
             fontSize: '24px', 
@@ -551,7 +745,10 @@ export class GameScene extends Phaser.Scene {
         startX += skillSpacing;
         
         // R Skill UI
-        this.rSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        this.rSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
+            .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
+            .on('pointerover', () => this.showSkillTooltip('R'))
+            .on('pointerout', this.hideItemTooltip);
         const rBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const rText = this.add.text(0, 0, 'R', { 
             fontSize: '24px', 
@@ -568,14 +765,23 @@ export class GameScene extends Phaser.Scene {
         startX += skillSpacing;
 
         // F Skill UI (Placeholder)
-        this.fSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        this.fSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
+            .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
+            .on('pointerover', () => this.showSkillTooltip('F'))
+            .on('pointerout', this.hideItemTooltip);
         const fBg = this.add.rectangle(0, 0, 50, 50, 0x1a1a1a);
         const fText = this.add.text(0, 0, 'F', { 
             fontSize: '24px', 
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#555555' 
         }).setOrigin(0.5);
-        this.fSkillUI.add([fBg, fText]);
+        const fCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const fCooldownText = this.add.text(0, 20, '', {
+            fontSize: '14px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+        this.fSkillUI.add([fBg, fText, fCooldownOverlay, fCooldownText]);
     }
 
     private createCharacterStatsUI() {
@@ -662,7 +868,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.player || !this.damageText || !this.attackSpeedText || !this.movementSpeedText || !this.armorText || !this.projectileCountText) return;
         
         // Get player stats
-        const damage = this.player.getAttackDamage();
+        const damage = Math.round(this.player.getAttackDamage());
         const attackSpeed = (1000 / this.player.getAttackCooldown()).toFixed(1); // Convert cooldown to attacks per second
         const moveSpeed = this.player.getMoveSpeed();
         const armor = this.player.getArmor();
@@ -679,6 +885,10 @@ export class GameScene extends Phaser.Scene {
         this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
         this.critChanceText.setText(`Crit Chance: ${critChance}%`);
         this.critDamageText.setText(`Crit Damage: ${critDamage}%`);
+    }
+
+    public addPet(pet: Pet) {
+        this.pets.add(pet);
     }
 
     private updateSkillUI() {
@@ -759,6 +969,22 @@ export class GameScene extends Phaser.Scene {
             // Ready
             rCooldownOverlay.setAlpha(0);
             rCooldownText.setText('');
+        }
+
+        // Update F skill UI
+        const fCooldownOverlay = this.fSkillUI.list[2] as Phaser.GameObjects.Rectangle;
+        const fCooldownText = this.fSkillUI.list[3] as Phaser.GameObjects.Text;
+
+        if (!player.isFSkillUnlocked()) {
+            fCooldownOverlay.setAlpha(0.8);
+            fCooldownText.setText(`Lv${SKILL_UNLOCK_LEVELS.F}`);
+        } else if (player.getFCooldownTimer() > 0) {
+            const cooldownPercent = player.getFCooldownTimer() / player.getFCooldown();
+            fCooldownOverlay.setAlpha(0.8 * cooldownPercent);
+            fCooldownText.setText(Math.ceil(player.getFCooldownTimer() / 1000).toString());
+        } else {
+            fCooldownOverlay.setAlpha(0);
+            fCooldownText.setText('');
         }
     }
 

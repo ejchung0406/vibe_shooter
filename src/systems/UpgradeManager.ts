@@ -58,6 +58,16 @@ export class UpgradeManager {
                     player.enableComboMaster();
                 }
             },
+            {
+                id: "advanced_combo",
+                name: "Advanced Combo",
+                description: "Every 2nd shot becomes a combo attack",
+                rarity: "legendary",
+                dependencies: ["combo_master"],
+                effect: (player: any) => {
+                    player.enableAdvancedCombo();
+                }
+            },
             
             // Stat improvements
             {
@@ -90,31 +100,31 @@ export class UpgradeManager {
             {
                 id: "power_shot_2",
                 name: "Power Shot 2",
-                description: "+30 damage",
+                description: "+20 damage",
                 rarity: "rare",
                 dependencies: ["power_shot"],
                 effect: (player: any) => {
-                    player.attackDamage += 30;
+                    player.attackDamage += 20;
                 }
             },
             {
                 id: "power_shot_3",
                 name: "Power Shot 3",
-                description: "+50 damage",
+                description: "+30 damage",
                 rarity: "epic",
                 dependencies: ["power_shot_2"],
                 effect: (player: any) => {
-                    player.attackDamage += 50;
+                    player.attackDamage += 30;
                 }
             },
             {
                 id: "mega_blast",
                 name: "Mega Blast",
-                description: "+100 damage", 
+                description: "+50 damage", 
                 rarity: "rare",
                 dependencies: ["power_shot_3"],
                 effect: (player: any) => {
-                    player.attackDamage += 100;  
+                    player.attackDamage += 50;  
                 }
             },
             {
@@ -277,41 +287,41 @@ export class UpgradeManager {
             {
                 id: "critical_damage",
                 name: "Critical Damage",
-                description: "Critical strike damage +10%",
+                description: "Critical strike damage +30%",
                 rarity: "common",
                 dependencies: ["critical_strike"],
                 effect: (player: any) => {
-                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.1);
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.3);
                 }
             },
             {
                 id: "critical_damage_2",
                 name: "Critical Damage 2",
-                description: "Critical strike damage +15%",
+                description: "Critical strike damage +50%",
                 rarity: "rare",
                 dependencies: ["critical_damage"],
                 effect: (player: any) => {
-                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.15);
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.5);
                 }
             },
             {
                 id: "critical_damage_3",
                 name: "Critical Damage 3",
-                description: "Critical strike damage +20%",
+                description: "Critical strike damage +80%",
                 rarity: "epic",
                 dependencies: ["critical_damage_2"],
                 effect: (player: any) => {
-                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.2);
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.8);
                 }
             },
             {
                 id: "critical_damage_4",
                 name: "Critical Damage 4",
-                description: "Critical strike damage +25%",
+                description: "Critical strike damage +120%",
                 rarity: "legendary",
                 dependencies: ["critical_damage_3"],
                 effect: (player: any) => {
-                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 0.25);
+                    player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 1.2);
                 }
             },
 
@@ -360,30 +370,40 @@ export class UpgradeManager {
             {
                 id: "armor_boost_1",
                 name: "Armor Boost",
-                description: "+2 Armor",
+                description: "+5 Armor",
                 rarity: "common",
                 effect: (player: any) => {
-                    player.increaseArmor(2);
+                    player.increaseArmor(5);
                 }
             },
             {
                 id: "armor_boost_2",
                 name: "Armor Boost 2",
-                description: "+3 Armor",
+                description: "+10 Armor",
                 rarity: "rare",
                 dependencies: ["armor_boost_1"],
                 effect: (player: any) => {
-                    player.increaseArmor(3);
+                    player.increaseArmor(10);
                 }
             },
             {
                 id: "armor_boost_3",
                 name: "Armor Boost 3",
-                description: "+5 Armor",
+                description: "+20 Armor",
                 rarity: "epic",
                 dependencies: ["armor_boost_2"],
                 effect: (player: any) => {
-                    player.increaseArmor(5);
+                    player.increaseArmor(20);
+                }
+            },
+            {
+                id: "armor_boost_4",
+                name: "Armor Boost 4",
+                description: "+50 Armor",
+                rarity: "legendary",
+                dependencies: ["armor_boost_3"],
+                effect: (player: any) => {
+                    player.increaseArmor(50);
                 }
             },
 
@@ -415,6 +435,16 @@ export class UpgradeManager {
                 dependencies: ["e_cooldown_2"],
                 effect: (player: any) => {
                     player.setECooldown(player.getOriginalECooldown() * 0.4);
+                }
+            },
+            {
+                id: "shield_absorb",
+                name: "Shield Absorb",
+                description: "E skill absorbs 50% of damage taken as health",
+                rarity: "epic",
+                dependencies: ["e_cooldown_2"],
+                effect: (player: any) => {
+                    player.setShieldAbsorbs(true);
                 }
             },
 
@@ -475,13 +505,47 @@ export class UpgradeManager {
             if (!upgrade.dependencies) {
                 return true;
             }
-            return upgrade.dependencies.every(dep => 
+            return upgrade.dependencies.every(dep =>
                 this.appliedUpgrades.some(applied => applied.id === dep)
             );
         });
 
-        const shuffled = [...available].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, Math.min(count, shuffled.length));
+        const weightedUpgrades = available.flatMap(upgrade => {
+            const weight = this.getWeightForRarity(upgrade.rarity);
+            return Array(weight).fill(upgrade);
+        });
+
+        const shuffled = [...weightedUpgrades].sort(() => 0.5 - Math.random());
+        
+        const selectedUpgrades: Upgrade[] = [];
+        const selectedIds = new Set<string>();
+
+        for (const upgrade of shuffled) {
+            if (selectedUpgrades.length >= count) {
+                break;
+            }
+            if (!selectedIds.has(upgrade.id)) {
+                selectedUpgrades.push(upgrade);
+                selectedIds.add(upgrade.id);
+            }
+        }
+
+        return selectedUpgrades;
+    }
+
+    private getWeightForRarity(rarity: 'common' | 'rare' | 'epic' | 'legendary'): number {
+        switch (rarity) {
+            case 'common':
+                return 10;
+            case 'rare':
+                return 5;
+            case 'epic':
+                return 2;
+            case 'legendary':
+                return 1;
+            default:
+                return 1;
+        }
     }
 
     public applyUpgrade(upgrade: Upgrade) {

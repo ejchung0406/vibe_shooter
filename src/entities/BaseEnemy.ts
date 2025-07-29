@@ -77,18 +77,18 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected calculateHealth() {
         const scene = this.scene as Phaser.Scene;
         const gameScene = scene as any;
-        const playerLevel = gameScene.getPlayerLevel ? gameScene.getPlayerLevel() : 1;
+        const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
         
-        // HP scaling map based on player level
+        // HP scaling map based on wave number
         const hpScalingMap: { [key: number]: number } = {
             1: 15, 2: 20, 3: 25, 4: 30, 5: 45,
-            6: 60, 7: 80, 8: 100, 9: 150, 10: 200,
-            11: 300, 12: 450, 13: 600, 14: 800, 15: 1100,
-            16: 1500, 17: 2000, 18: 2500, 19: 3000, 20: 4000,
+            6: 180, 7: 240, 8: 300, 9: 450, 10: 600,
+            11: 900, 12: 1350, 13: 1800, 14: 2400, 15: 3300,
+            16: 4500, 17: 6000, 18: 7500, 19: 9000, 20: 12000,
         };
         
-        // Get base HP for current level (default to level 10 if higher)
-        const baseHp = hpScalingMap[playerLevel] || hpScalingMap[10];
+        // Get base HP for current wave
+        const baseHp = hpScalingMap[waveNumber] || hpScalingMap[20] * (1 + (waveNumber - 20) * 0.2);
         
         // Apply enemy type multiplier
         this.health = Math.floor(baseHp * this.baseHealthMultiplier);
