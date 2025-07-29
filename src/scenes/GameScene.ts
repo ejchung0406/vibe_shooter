@@ -584,7 +584,7 @@ export class GameScene extends Phaser.Scene {
     private levelUp() {
         this.playerLevel++;
         this.playerXP -= this.xpToNextLevel;
-        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.2); // Increase XP requirement
+        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5); // Increase XP requirement
         
         // --- Level Up Bonuses ---
         // 1. Fixed armor gain

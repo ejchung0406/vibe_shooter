@@ -93,8 +93,9 @@ export class UIScene extends Phaser.Scene {
 
         // Button actions
         restartButton.on('pointerdown', () => {
-            this.scene.get('GameScene').scene.restart();
-            this.scene.stop();
+            this.scene.stop('GameScene');
+            this.scene.stop('UIScene');
+            this.scene.start('GameScene');
         });
 
         menuButton.on('pointerdown', () => {

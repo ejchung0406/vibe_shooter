@@ -14,7 +14,7 @@ export class EnemySpawner {
     
     // Wave system based on kills
     private enemiesKilledThisWave: number = 0;
-    private enemiesToKillPerWave: number = 25; // Kill 25 enemies to advance wave
+    private enemiesToKillPerWave: number = 10; // Kill 10 enemies to advance wave
     
     // Difficulty scaling
     private difficultyMultiplier: number = 1.0;
@@ -146,6 +146,8 @@ export class EnemySpawner {
         this.waveNumber++;
         this.enemiesKilledThisWave = 0;
         
+        this.enemiesToKillPerWave = 10 + Math.floor((this.waveNumber - 1) * 2.5);
+
         // Update wave display
         this.updateWaveDisplay();
         
@@ -165,7 +167,11 @@ export class EnemySpawner {
         // This will be handled by the GameScene
         const gameScene = this.scene as any;
         if (gameScene.updateWaveCounter) {
-            gameScene.updateWaveCounter(this.waveNumber);
+            gameScene.updateWaveCounter(
+                this.waveNumber, 
+                this.enemiesKilledThisWave, 
+                this.enemiesToKillPerWave
+            );
         }
     }
     

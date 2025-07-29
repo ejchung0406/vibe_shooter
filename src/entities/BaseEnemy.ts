@@ -81,10 +81,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         // HP scaling map based on wave number (increased difficulty from wave 3+)
         const hpScalingMap: { [key: number]: number } = {
-            1: 15, 2: 20, 3: 50, 4: 80, 5: 120,
-            6: 200, 7: 300, 8: 450, 9: 650, 10: 900,
-            11: 1200, 12: 1600, 13: 2200, 14: 3000, 15: 4000,
-            16: 5500, 17: 7500, 18: 10000, 19: 13000, 20: 17000,
+            1: 15, 2: 100, 3: 300, 4: 800, 5: 2000,
+            6: 4000, 7: 8000, 8: 16000, 9: 32000, 10: 64000,
+            11: 128000, 12: 256000, 13: 512000, 14: 1024000, 15: 2048000,
         };
         
         // Get base HP for current wave
@@ -289,8 +288,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
 
         // XP scaling map based on wave number
         const xpWaveMultipliers: { [key: number]: number } = {
-            1: 1.0, 5: 1.2, 10: 1.5, 15: 2.0, 20: 2.5,
-            25: 3.0, 30: 4.0, 40: 5.0, 50: 7.0, 60: 10.0
+            1: 1.0, 2: 1.05, 3: 1.1, 4: 1.15, 5: 1.2,
+            6: 1.25, 7: 1.3, 8: 1.35, 9: 1.4, 10: 1.45,
+            11: 1.5,
         };
 
         // Get the closest wave multiplier (or default to 1.0)
