@@ -1,0 +1,461 @@
+import Phaser from 'phaser';
+import { Player } from '../entities/Player';
+import { TankEnemy } from '../entities/TankEnemy';
+import { RangedEnemy } from '../entities/RangedEnemy';
+import { Projectile } from '../entities/Projectile';
+import { UpgradeManager } from '../systems/UpgradeManager';
+import { EnemySpawner } from '../systems/EnemySpawner';
+
+export class GameScene extends Phaser.Scene {
+    private player!: Player;
+    private enemies!: Phaser.GameObjects.Group;
+    private projectiles!: Phaser.GameObjects.Group;
+    private enemyProjectiles!: Phaser.GameObjects.Group;
+    private upgradeManager!: UpgradeManager;
+    private enemySpawner!: EnemySpawner;
+    
+    // Game state
+    private gameTime: number = 0;
+    private playerLevel: number = 1;
+    private playerXP: number = 0;
+    private xpToNextLevel: number = 100;
+    
+    // UI elements
+    private levelText!: Phaser.GameObjects.Text;
+    private xpText!: Phaser.GameObjects.Text;
+    private timeText!: Phaser.GameObjects.Text;
+    private healthBar!: Phaser.GameObjects.Rectangle;
+    private healthBarBg!: Phaser.GameObjects.Rectangle;
+    private healthText!: Phaser.GameObjects.Text;
+    private xpBar!: Phaser.GameObjects.Rectangle;
+    private qSkillUI!: Phaser.GameObjects.Container;
+    private eSkillUI!: Phaser.GameObjects.Container;
+
+    constructor() {
+        super({ key: 'GameScene' });
+    }
+
+    create() {
+        // Create background pattern
+        this.createBackground();
+        
+        // Initialize game systems
+        this.upgradeManager = new UpgradeManager(this);
+        this.enemySpawner = new EnemySpawner(this);
+        
+        // Create groups
+        this.enemies = this.add.group();
+        this.projectiles = this.add.group();
+        this.enemyProjectiles = this.add.group();
+        
+        // Add physics to enemy group
+        this.physics.add.collider(this.enemies, this.enemies, this.handleEnemyCollision, undefined, this);
+        
+        // Create player at center of the world (0,0)
+        this.player = new Player(this, 0, 0);
+        this.add.existing(this.player);
+        
+        // Setup camera
+        this.setupCamera();
+        
+        // Setup UI
+        this.setupUI();
+        
+        // Start enemy spawning
+        this.enemySpawner.startSpawning();
+        
+        // Setup input
+        this.setupInput();
+    }
+
+    update(time: number, delta: number) {
+        this.gameTime += delta;
+        
+        // Handle WASD movement
+        this.handleMovement();
+        
+        // Update player
+        this.player.update(time, delta);
+        
+        // Update enemies
+        this.enemies.getChildren().forEach((enemy: any) => {
+            enemy.update(time, delta);
+        });
+        
+        // Update projectiles
+        this.projectiles.getChildren().forEach((projectile: any) => {
+            projectile.update(time, delta);
+        });
+        
+        // Update enemy projectiles
+        this.enemyProjectiles.getChildren().forEach((projectile: any) => {
+            projectile.update(time, delta);
+        });
+        
+        // Update camera
+        this.updateCamera();
+        
+        // Update UI
+        this.updateUI();
+        
+        // Update skill UI
+        this.updateSkillUI();
+        
+        // Check for level up
+        this.checkLevelUp();
+    }
+
+    private handleMovement() {
+        let velX = 0;
+        let velY = 0;
+        
+        if (this.wKey?.isDown) velY -= 1;
+        if (this.sKey?.isDown) velY += 1;
+        if (this.aKey?.isDown) velX -= 1;
+        if (this.dKey?.isDown) velX += 1;
+        
+        // Normalize diagonal movement
+        if (velX !== 0 && velY !== 0) {
+            velX *= 0.707; // 1/√2
+            velY *= 0.707;
+        }
+        
+        this.player.setVelocity(velX, velY);
+    }
+
+    private setupUI() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+        
+        // XP bar at bottom of screen
+        const xpBarY = screenHeight - 20;
+        const xpBarWidth = screenWidth - 40;
+        
+        // XP bar background
+        this.add.rectangle(screenWidth / 2, xpBarY, xpBarWidth, 10, 0x333333).setScrollFactor(0);
+        
+        // XP bar (will be updated in updateUI) - start from left edge
+        this.xpBar = this.add.rectangle(20, xpBarY, 0, 10, 0x00ff00).setOrigin(0, 0.5).setScrollFactor(0);
+        
+        // XP text (on the bar, white color)
+        this.xpText = this.add.text(screenWidth / 2, xpBarY, 'XP: 0/100', {
+            fontSize: '12px',
+            color: '#ffffff'
+        }).setOrigin(0.5).setScrollFactor(0);
+        
+        this.timeText = this.add.text(20, 80, 'Time: 0:00', {
+            fontSize: '18px',
+            color: '#00ffff'
+        }).setScrollFactor(0);
+        
+        // Health bar (center bottom like LoL)
+        const centerX = screenWidth / 2;
+        const bottomY = screenHeight - 60;
+        
+        this.healthBarBg = this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0);
+        this.healthBar = this.add.rectangle(centerX, bottomY, 300, 30, 0x00ff00).setScrollFactor(0);
+        this.healthText = this.add.text(centerX, bottomY, '100/100', {
+            fontSize: '18px',
+            color: '#ffffff'
+        }).setOrigin(0.5).setScrollFactor(0);
+        
+        // Level text (left of health bar)
+        this.levelText = this.add.text(centerX - 180, bottomY, 'Level: 1', {
+            fontSize: '20px',
+            color: '#ffffff'
+        }).setOrigin(0.5).setScrollFactor(0);
+        
+        // Add wave counter on the right side
+        this.add.text(screenWidth - 150, 20, 'Wave: 1', {
+            fontSize: '18px',
+            color: '#ffaa00'
+        }).setScrollFactor(0);
+        
+        // Create skill UI
+        this.createSkillUI();
+    }
+
+    private updateUI() {
+        this.levelText.setText(`Level: ${this.playerLevel}`);
+        
+        // Update XP bar
+        const xpPercent = this.playerXP / this.xpToNextLevel;
+        const maxXpBarWidth = this.scale.width - 40;
+        this.xpBar.width = maxXpBarWidth * xpPercent;
+        this.xpText.setText(`XP: ${this.playerXP}/${this.xpToNextLevel}`);
+        
+        const minutes = Math.floor(this.gameTime / 60000);
+        const seconds = Math.floor((this.gameTime % 60000) / 1000);
+        this.timeText.setText(`Time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+        
+        // Update health bar
+        const player = this.getPlayer();
+        if (player && player.isAlive()) {
+            const healthPercent = player.getHealth() / player.getMaxHealth();
+            this.healthBar.width = 300 * healthPercent;
+            this.healthText.setText(`${player.getHealth()}/${player.getMaxHealth()}`);
+            
+            // Change color based on health
+            if (healthPercent > 0.6) {
+                this.healthBar.setFillStyle(0x00ff00);
+            } else if (healthPercent > 0.3) {
+                this.healthBar.setFillStyle(0xffff00);
+            } else {
+                this.healthBar.setFillStyle(0xff0000);
+            }
+        }
+    }
+
+    private wKey!: Phaser.Input.Keyboard.Key;
+    private aKey!: Phaser.Input.Keyboard.Key;
+    private sKey!: Phaser.Input.Keyboard.Key;
+    private dKey!: Phaser.Input.Keyboard.Key;
+
+    private setupInput() {
+        // Create cursor keys for WASD
+        this.wKey = this.input.keyboard.addKey('W');
+        this.aKey = this.input.keyboard.addKey('A');
+        this.sKey = this.input.keyboard.addKey('S');
+        this.dKey = this.input.keyboard.addKey('D');
+        
+        // Right-click shooting
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            if (pointer.rightButtonDown()) {
+                this.player.attack();
+            }
+        });
+        
+        // Q and E skill keys
+        const qKey = this.input.keyboard.addKey('Q');
+        const eKey = this.input.keyboard.addKey('E');
+        
+        qKey.on('down', () => {
+            this.player.useQSkill();
+        });
+        
+        eKey.on('down', () => {
+            this.player.useESkill();
+        });
+    }
+
+    public addXP(amount: number) {
+        this.playerXP += amount;
+        
+        if (this.playerXP >= this.xpToNextLevel) {
+            this.levelUp();
+        }
+    }
+
+    private levelUp() {
+        this.playerLevel++;
+        this.playerXP -= this.xpToNextLevel;
+        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.2); // Increase XP requirement
+        
+        // Unlock skills
+        this.player.unlockSkills(this.playerLevel);
+        
+        // Trigger level up UI
+        this.scene.launch('UIScene', { 
+            level: this.playerLevel,
+            upgradeManager: this.upgradeManager
+        });
+        
+        // Pause the game
+        this.scene.pause();
+    }
+
+    private checkLevelUp() {
+        if (this.playerXP >= this.xpToNextLevel) {
+            this.levelUp();
+        }
+    }
+
+    public getPlayer() {
+        return this.player;
+    }
+
+    public getEnemies() {
+        return this.enemies;
+    }
+
+    public getProjectiles() {
+        return this.projectiles;
+    }
+
+    public getEnemyProjectiles() {
+        return this.enemyProjectiles;
+    }
+
+    public getGameTime() {
+        return this.gameTime;
+    }
+
+    public getPlayerLevel() {
+        return this.playerLevel;
+    }
+
+    private createBackground() {
+        // Create a grid pattern background
+        const gridSize = 100;
+        const mapWidth = this.scale.width * 6;
+        const mapHeight = this.scale.height * 6;
+        
+        // Create background graphics object
+        const background = this.add.graphics();
+        background.setPosition(-mapWidth/2, -mapHeight/2);
+        
+        // Set line style (brighter and more visible)
+        background.lineStyle(1, 0x666666, 0.6);
+        
+        // Draw vertical lines
+        for (let x = 0; x <= mapWidth; x += gridSize) {
+            background.beginPath();
+            background.moveTo(x, 0);
+            background.lineTo(x, mapHeight);
+            background.strokePath();
+        }
+        
+        // Draw horizontal lines
+        for (let y = 0; y <= mapHeight; y += gridSize) {
+            background.beginPath();
+            background.moveTo(0, y);
+            background.lineTo(mapWidth, y);
+            background.strokePath();
+        }
+        
+        // Move background to the back
+        background.setDepth(-1000);
+    }
+
+    private setupCamera() {
+        // Set camera bounds centered around world origin
+        const mapSize = this.scale.width * 3;
+        this.cameras.main.setBounds(-mapSize, -mapSize, mapSize * 2, mapSize * 2);
+        
+        // Start camera at player position
+        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    }
+
+    private updateCamera() {
+        const player = this.getPlayer();
+        if (!player) return;
+        
+        // Get mouse position in world coordinates
+        const camera = this.cameras.main;
+        const mouseX = this.input.mousePointer.x + camera.scrollX;
+        const mouseY = this.input.mousePointer.y + camera.scrollY;
+        
+        // Calculate point between mouse and player (9:1 ratio, closer to player)
+        const targetX = player.getX() * 0.9 + mouseX * 0.1;
+        const targetY = player.getY() * 0.9 + mouseY * 0.1;
+        
+        // Smoothly move camera to target position
+        this.cameras.main.pan(targetX, targetY, 100);
+    }
+
+    private handleEnemyCollision(enemy1: any, enemy2: any) {
+        // Push enemies apart when they collide
+        const dx = enemy1.x - enemy2.x;
+        const dy = enemy1.y - enemy2.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+            const pushForce = 100;
+            const pushX = (dx / distance) * pushForce;
+            const pushY = (dy / distance) * pushForce;
+            
+            const body1 = enemy1.body as Phaser.Physics.Arcade.Body;
+            const body2 = enemy2.body as Phaser.Physics.Arcade.Body;
+            
+            if (body1) body1.setVelocity(pushX, pushY);
+            if (body2) body2.setVelocity(-pushX, -pushY);
+        }
+    }
+
+    private createSkillUI() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+        
+        // Q Skill UI
+        this.qSkillUI = this.add.container(screenWidth - 150, screenHeight - 100).setScrollFactor(0);
+        const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
+        const qText = this.add.text(0, 0, 'Q', { fontSize: '20px', color: '#ffffff' }).setOrigin(0.5);
+        const qCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const qCooldownText = this.add.text(0, 20, '', { fontSize: '12px', color: '#ffffff' }).setOrigin(0.5);
+        this.qSkillUI.add([qBg, qText, qCooldownOverlay, qCooldownText]);
+        
+        // E Skill UI
+        this.eSkillUI = this.add.container(screenWidth - 80, screenHeight - 100).setScrollFactor(0);
+        const eBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
+        const eText = this.add.text(0, 0, 'E', { fontSize: '20px', color: '#ffffff' }).setOrigin(0.5);
+        const eCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const eCooldownText = this.add.text(0, 20, '', { fontSize: '12px', color: '#ffffff' }).setOrigin(0.5);
+        this.eSkillUI.add([eBg, eText, eCooldownOverlay, eCooldownText]);
+    }
+
+    private updateSkillUI() {
+        const player = this.getPlayer();
+        if (!player) return;
+        
+        // Update Q skill UI
+        const qCooldownOverlay = this.qSkillUI.list[2] as Phaser.GameObjects.Rectangle;
+        const qCooldownText = this.qSkillUI.list[3] as Phaser.GameObjects.Text;
+        
+        if (this.playerLevel < 2) {
+            // Disabled state
+            qCooldownOverlay.setAlpha(0.8);
+            qCooldownText.setText('Lv2');
+        } else if (player.getQCooldownTimer() > 0) {
+            // On cooldown
+            const cooldownPercent = player.getQCooldownTimer() / player.getQCooldown();
+            qCooldownOverlay.setAlpha(0.8 * cooldownPercent);
+            qCooldownText.setText(Math.ceil(player.getQCooldownTimer() / 1000).toString());
+        } else {
+            // Ready
+            qCooldownOverlay.setAlpha(0);
+            qCooldownText.setText('');
+        }
+        
+        // Update E skill UI
+        const eCooldownOverlay = this.eSkillUI.list[2] as Phaser.GameObjects.Rectangle;
+        const eCooldownText = this.eSkillUI.list[3] as Phaser.GameObjects.Text;
+        
+        if (this.playerLevel < 2) {
+            // Disabled state
+            eCooldownOverlay.setAlpha(0.8);
+            eCooldownText.setText('Lv2');
+        } else if (player.getECooldownTimer() > 0) {
+            // On cooldown
+            const cooldownPercent = player.getECooldownTimer() / player.getECooldown();
+            eCooldownOverlay.setAlpha(0.8 * cooldownPercent);
+            eCooldownText.setText(Math.ceil(player.getECooldownTimer() / 1000).toString());
+        } else {
+            // Ready
+            eCooldownOverlay.setAlpha(0);
+            eCooldownText.setText('');
+        }
+    }
+
+    public gameOver() {
+        // Stop the game
+        this.scene.pause();
+        
+        // Show game over screen
+        const gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2, 'GAME OVER', {
+            fontSize: '64px',
+            color: '#ff0000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        const restartText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 100, 'Click to restart', {
+            fontSize: '24px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+        
+        // Restart on click
+        this.input.once('pointerdown', () => {
+            this.scene.restart();
+        });
+    }
+
+} 
