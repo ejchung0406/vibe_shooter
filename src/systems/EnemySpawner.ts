@@ -255,12 +255,12 @@ export class EnemySpawner {
         });
     }
 
-    public getWaveNumber(): number {
-        return this.waveNumber;
-    }
-
     public getDifficultyMultiplier(): number {
         return this.difficultyMultiplier;
+    }
+
+    public getWaveNumber(): number {
+        return this.waveNumber;
     }
 
     public pauseSpawning() {

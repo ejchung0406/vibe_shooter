@@ -11,6 +11,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected healthBarBg!: Phaser.GameObjects.Rectangle;
     protected baseHealthMultiplier: number = 1;
     protected isBoss: boolean = false;
+    protected xpMultiplier: number = 1;
     private highlight!: Phaser.GameObjects.Graphics;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -219,10 +220,11 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     private showDamageText(damage: number, isCritical: boolean) {
-        const fontSize = isCritical ? '22px' : '14px';
+        const fontSize = isCritical ? '44px' : '28px';
         const color = isCritical ? '#ff0000' : '#ffff00';
 
         const damageText = this.scene.add.text(this.x, this.y - 30, Math.round(damage).toString(), {
+            fontFamily: 'Helvetica, Arial, sans-serif',
             fontSize: fontSize,
             color: color,
             fontStyle: 'bold'
@@ -262,14 +264,35 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         const scene = this.scene as Phaser.Scene;
         const gameScene = scene as any;
         
+        // --- XP Wave Bonus Logic ---
+        const enemySpawner = gameScene.getEnemySpawner();
+        const waveNumber = enemySpawner ? enemySpawner.getWaveNumber() : 1;
+
+        // XP scaling map based on wave number
+        const xpWaveMultipliers: { [key: number]: number } = {
+            1: 1.0, 5: 1.2, 10: 1.5, 15: 2.0, 20: 2.5,
+            25: 3.0, 30: 4.0, 40: 5.0, 50: 7.0, 60: 10.0
+        };
+
+        // Get the closest wave multiplier (or default to 1.0)
+        let waveMultiplier = 1.0;
+        for (const wave in xpWaveMultipliers) {
+            if (waveNumber >= parseInt(wave)) {
+                waveMultiplier = xpWaveMultipliers[wave];
+            } else {
+                break;
+            }
+        }
+
+        const finalXP = Math.floor((this.xpValue * this.xpMultiplier) * waveMultiplier);
+
         // Give XP to player
-        gameScene.addXP(this.xpValue);
+        gameScene.addXP(finalXP);
         
         // Show XP text
-        this.showXPText(this.xpValue);
+        this.showXPText(finalXP);
 
         // Notify enemy spawner of kill (for wave progression)
-        const enemySpawner = gameScene.getEnemySpawner();
         if (enemySpawner) {
             enemySpawner.onEnemyKilled();
         }

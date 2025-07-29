@@ -32,6 +32,8 @@ export class GameScene extends Phaser.Scene {
     private qSkillUI!: Phaser.GameObjects.Container;
     private eSkillUI!: Phaser.GameObjects.Container;
     private dashSkillUI!: Phaser.GameObjects.Container; // Dash skill UI
+    private rSkillUI!: Phaser.GameObjects.Container;
+    private fSkillUI!: Phaser.GameObjects.Container;
     
     // Character stats UI
     private statsContainer!: Phaser.GameObjects.Container;
@@ -40,6 +42,8 @@ export class GameScene extends Phaser.Scene {
     private movementSpeedText!: Phaser.GameObjects.Text;
     private armorText!: Phaser.GameObjects.Text;
     private projectileCountText!: Phaser.GameObjects.Text;
+    private critChanceText!: Phaser.GameObjects.Text;
+    private critDamageText!: Phaser.GameObjects.Text;
     
     // Wave counter UI
     private waveText!: Phaser.GameObjects.Text;
@@ -260,6 +264,8 @@ export class GameScene extends Phaser.Scene {
     private dKey!: Phaser.Input.Keyboard.Key;
     private qKey!: Phaser.Input.Keyboard.Key;
     private eKey!: Phaser.Input.Keyboard.Key;
+    private rKey!: Phaser.Input.Keyboard.Key;
+    private fKey!: Phaser.Input.Keyboard.Key;
     private shiftKey!: Phaser.Input.Keyboard.Key; // Left Shift for dash
     private spaceKey!: Phaser.Input.Keyboard.Key; // Spacebar for pause
 
@@ -283,6 +289,8 @@ export class GameScene extends Phaser.Scene {
         // Q, E, Shift, and Space keys
         this.qKey = this.input.keyboard.addKey('Q');
         this.eKey = this.input.keyboard.addKey('E');
+        this.rKey = this.input.keyboard.addKey('R');
+        this.fKey = this.input.keyboard.addKey('F');
         this.shiftKey = this.input.keyboard.addKey('SHIFT');
         
         this.qKey.on('down', () => {
@@ -293,6 +301,14 @@ export class GameScene extends Phaser.Scene {
             this.player.useESkill();
         });
         
+        this.rKey.on('down', () => {
+            this.player.useRSkill();
+        });
+
+        this.fKey.on('down', () => {
+            this.player.useFSkill();
+        });
+
         this.shiftKey.on('down', () => {
             this.player.useDashSkill();
         });
@@ -479,40 +495,12 @@ export class GameScene extends Phaser.Scene {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
         
-        // Q Skill UI
-        this.qSkillUI = this.add.container(screenWidth - 150, screenHeight - 100).setScrollFactor(0).setDepth(1000);
-        const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
-        const qText = this.add.text(0, 0, 'Q', { 
-            fontSize: '24px', 
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff' 
-        }).setOrigin(0.5);
-        const qCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
-        const qCooldownText = this.add.text(0, 20, '', { 
-            fontSize: '14px', 
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff' 
-        }).setOrigin(0.5);
-        this.qSkillUI.add([qBg, qText, qCooldownOverlay, qCooldownText]);
-        
-        // E Skill UI
-        this.eSkillUI = this.add.container(screenWidth - 80, screenHeight - 100).setScrollFactor(0).setDepth(1000);
-        const eBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
-        const eText = this.add.text(0, 0, 'E', { 
-            fontSize: '24px', 
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff' 
-        }).setOrigin(0.5);
-        const eCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
-        const eCooldownText = this.add.text(0, 20, '', { 
-            fontSize: '14px', 
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff' 
-        }).setOrigin(0.5);
-        this.eSkillUI.add([eBg, eText, eCooldownOverlay, eCooldownText]);
-        
+        const skillY = screenHeight - 100;
+        const skillSpacing = 70;
+        let startX = screenWidth - (skillSpacing * 5);
+
         // Dash Skill UI (Shift)
-        this.dashSkillUI = this.add.container(screenWidth - 220, screenHeight - 100).setScrollFactor(0).setDepth(1000);
+        this.dashSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
         const dashBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const dashText = this.add.text(0, 0, '⚡', { 
             fontSize: '20px', 
@@ -526,6 +514,68 @@ export class GameScene extends Phaser.Scene {
             color: '#ffffff' 
         }).setOrigin(0.5);
         this.dashSkillUI.add([dashBg, dashText, dashCooldownOverlay, dashCooldownText]);
+        startX += skillSpacing;
+
+        // Q Skill UI
+        this.qSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
+        const qText = this.add.text(0, 0, 'Q', { 
+            fontSize: '24px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        const qCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const qCooldownText = this.add.text(0, 20, '', { 
+            fontSize: '14px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        this.qSkillUI.add([qBg, qText, qCooldownOverlay, qCooldownText]);
+        startX += skillSpacing;
+        
+        // E Skill UI
+        this.eSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        const eBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
+        const eText = this.add.text(0, 0, 'E', { 
+            fontSize: '24px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        const eCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const eCooldownText = this.add.text(0, 20, '', { 
+            fontSize: '14px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        this.eSkillUI.add([eBg, eText, eCooldownOverlay, eCooldownText]);
+        startX += skillSpacing;
+        
+        // R Skill UI
+        this.rSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        const rBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
+        const rText = this.add.text(0, 0, 'R', { 
+            fontSize: '24px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        const rCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
+        const rCooldownText = this.add.text(0, 20, '', { 
+            fontSize: '14px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff' 
+        }).setOrigin(0.5);
+        this.rSkillUI.add([rBg, rText, rCooldownOverlay, rCooldownText]);
+        startX += skillSpacing;
+
+        // F Skill UI (Placeholder)
+        this.fSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000);
+        const fBg = this.add.rectangle(0, 0, 50, 50, 0x1a1a1a);
+        const fText = this.add.text(0, 0, 'F', { 
+            fontSize: '24px', 
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#555555' 
+        }).setOrigin(0.5);
+        this.fSkillUI.add([fBg, fText]);
     }
 
     private createCharacterStatsUI() {
@@ -543,7 +593,7 @@ export class GameScene extends Phaser.Scene {
         this.statsContainer = this.add.container(statsX, statsY).setScrollFactor(0).setDepth(1000);
         
         // Background panel (made taller for all stats including projectiles)
-        const statsBg = this.add.rectangle(0, 0, 220, 180, 0x000000, 0.7);
+        const statsBg = this.add.rectangle(0, 0, 220, 230, 0x000000, 0.7);
         statsBg.setStrokeStyle(2, 0x333333);
         statsBg.setOrigin(0, 0);
         
@@ -590,8 +640,22 @@ export class GameScene extends Phaser.Scene {
             color: '#ffffff'
         });
         
+        // Critical strike chance
+        this.critChanceText = this.add.text(10, 165, 'Crit Chance: 0%', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+
+        // Critical strike damage
+        this.critDamageText = this.add.text(10, 190, 'Crit Damage: 120%', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+
         // Add all elements to container
-        this.statsContainer.add([statsBg, statsTitle, this.damageText, this.attackSpeedText, this.movementSpeedText, this.armorText, this.projectileCountText]);
+        this.statsContainer.add([statsBg, statsTitle, this.damageText, this.attackSpeedText, this.movementSpeedText, this.armorText, this.projectileCountText, this.critChanceText, this.critDamageText]);
     }
 
     private updateCharacterStats() {
@@ -604,6 +668,8 @@ export class GameScene extends Phaser.Scene {
         const armor = this.player.getArmor();
         const damageReduction = this.player.getDamageReduction().toFixed(1);
         const projectileCount = this.player.getProjectileCount();
+        const critChance = (this.player.getCriticalStrikeChance() * 100).toFixed(0);
+        const critDamage = (this.player.getCriticalStrikeDamage() * 100).toFixed(0);
         
         // Update text displays
         this.damageText.setText(`Damage: ${damage}`);
@@ -611,6 +677,8 @@ export class GameScene extends Phaser.Scene {
         this.movementSpeedText.setText(`Move Speed: ${moveSpeed}`);
         this.armorText.setText(`Armor: ${armor} (${damageReduction}%)`);
         this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
+        this.critChanceText.setText(`Crit Chance: ${critChance}%`);
+        this.critDamageText.setText(`Crit Damage: ${critDamage}%`);
     }
 
     private updateSkillUI() {
@@ -672,6 +740,25 @@ export class GameScene extends Phaser.Scene {
             // Ready
             dashCooldownOverlay.setAlpha(0);
             dashCooldownText.setText('');
+        }
+
+        // Update R skill UI
+        const rCooldownOverlay = this.rSkillUI.list[2] as Phaser.GameObjects.Rectangle;
+        const rCooldownText = this.rSkillUI.list[3] as Phaser.GameObjects.Text;
+
+        if (!player.isRSkillUnlocked()) {
+            // Disabled state
+            rCooldownOverlay.setAlpha(0.8);
+            rCooldownText.setText(`Lv${SKILL_UNLOCK_LEVELS.R}`);
+        } else if (player.getRCooldownTimer() > 0) {
+            // On cooldown
+            const cooldownPercent = player.getRCooldownTimer() / player.getRCooldown();
+            rCooldownOverlay.setAlpha(0.8 * cooldownPercent);
+            rCooldownText.setText(Math.ceil(player.getRCooldownTimer() / 1000).toString());
+        } else {
+            // Ready
+            rCooldownOverlay.setAlpha(0);
+            rCooldownText.setText('');
         }
     }
 

@@ -385,6 +385,87 @@ export class UpgradeManager {
                 effect: (player: any) => {
                     player.increaseArmor(5);
                 }
+            },
+
+            // E skill cooldown reduction
+            {
+                id: "e_cooldown_1",
+                name: "E Cooldown 1",
+                description: "Reduce E skill cooldown by 20%",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.setECooldown(player.getOriginalECooldown() * 0.8);
+                }
+            },
+            {
+                id: "e_cooldown_2",
+                name: "E Cooldown 2",
+                description: "Reduce E skill cooldown by 35%",
+                rarity: "rare",
+                dependencies: ["e_cooldown_1"],
+                effect: (player: any) => {
+                    player.setECooldown(player.getOriginalECooldown() * 0.65);
+                }
+            },
+            {
+                id: "e_cooldown_3",
+                name: "E Cooldown 3",
+                description: "Reduce E skill cooldown by 60%",
+                rarity: "epic",
+                dependencies: ["e_cooldown_2"],
+                effect: (player: any) => {
+                    player.setECooldown(player.getOriginalECooldown() * 0.4);
+                }
+            },
+
+            // R skill upgrades
+            {
+                id: "r_projectile_1",
+                name: "R Skill Projectile 1",
+                description: "Increase R skill projectiles by 1.5x",
+                rarity: "rare",
+                effect: (player: any) => {
+                    player.setRProjectileMultiplier(1.5);
+                }
+            },
+            {
+                id: "r_projectile_2",
+                name: "R Skill Projectile 2",
+                description: "Increase R skill projectiles by 2x",
+                rarity: "epic",
+                dependencies: ["r_projectile_1"],
+                effect: (player: any) => {
+                    player.setRProjectileMultiplier(2);
+                }
+            },
+            {
+                id: "r_cooldown_1",
+                name: "R Cooldown 1",
+                description: "Reduce R skill cooldown by 20%",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.setRCooldown(player.getOriginalRCooldown() * 0.8);
+                }
+            },
+            {
+                id: "r_cooldown_2",
+                name: "R Cooldown 2",
+                description: "Reduce R skill cooldown by 35%",
+                rarity: "rare",
+                dependencies: ["r_cooldown_1"],
+                effect: (player: any) => {
+                    player.setRCooldown(player.getOriginalRCooldown() * 0.65);
+                }
+            },
+            {
+                id: "r_cooldown_3",
+                name: "R Cooldown 3",
+                description: "Reduce R skill cooldown by 60%",
+                rarity: "epic",
+                dependencies: ["r_cooldown_2"],
+                effect: (player: any) => {
+                    player.setRCooldown(player.getOriginalRCooldown() * 0.4);
+                }
             }
         ];
     }

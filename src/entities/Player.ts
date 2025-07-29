@@ -7,6 +7,7 @@ export const SKILL_UNLOCK_LEVELS = {
     Q: 1,
     E: 2,
     DASH: 3,
+    R: 7,
 };
 
 export class Player extends Phaser.GameObjects.Container {
@@ -20,7 +21,7 @@ export class Player extends Phaser.GameObjects.Container {
     private armor: number = 5; // Default armor value
     private projectileCount: number = 1;
     private piercing: boolean = false;
-    private projectileSpeed: number = 300;
+    private projectileSpeed: number = 500;
     private isAttacking: boolean = false;
     private attackPauseTimer: number = 0;
     private health: number = 100;
@@ -41,8 +42,8 @@ export class Player extends Phaser.GameObjects.Container {
     private healOverTimeInterval: number = 1000; // 1 second
     
     // Critical strike properties
-    private criticalStrikeChance: number = 0;
-    private criticalStrikeDamage: number = 1.2; // 120% damage
+    private criticalStrikeChance: number = 0.15;
+    private criticalStrikeDamage: number = 1.5; // 150% damage
     private xpMultiplier: number = 1;
     private qDamageToNormalMultiplier: number = 1;
     private eSkillHeals: boolean = false;
@@ -54,17 +55,23 @@ export class Player extends Phaser.GameObjects.Container {
     private hasComboMaster: boolean = false; // Combo master upgrade
     private shotCounter: number = 0; // Track shots for combo
     private qSkillHomingMultiplier: number = 1;
+    private rProjectileMultiplier: number = 1;
 
     // Skills
     private qSkillUnlocked: boolean = false;
     private eSkillUnlocked: boolean = false;
     private dashSkillUnlocked: boolean = false; // New dash skill
+    private rSkillUnlocked: boolean = false;
     private qCooldown: number = 3000; // 3 seconds
     private eCooldown: number = 8000; // 8 seconds
+    private readonly originalECooldown: number;
     private dashCooldown: number = 2000; // 2 seconds
+    private rCooldown: number = 10000; // 10 seconds
+    private readonly originalRCooldown: number;
     private qCooldownTimer: number = 0;
     private eCooldownTimer: number = 0;
     private dashCooldownTimer: number = 0; // New dash cooldown timer
+    private rCooldownTimer: number = 0;
     
     // Shield
     private shieldActive: boolean = false;
@@ -117,6 +124,10 @@ export class Player extends Phaser.GameObjects.Container {
         
         // Initial skill unlock check
         this.unlockSkills(1);
+
+        // Store original cooldowns
+        this.originalECooldown = this.eCooldown;
+        this.originalRCooldown = this.rCooldown;
     }
 
     private createHealthBar() {
@@ -424,6 +435,9 @@ export class Player extends Phaser.GameObjects.Container {
         if (level >= SKILL_UNLOCK_LEVELS.DASH) {
             this.dashSkillUnlocked = true;
         }
+        if (level >= SKILL_UNLOCK_LEVELS.R) {
+            this.rSkillUnlocked = true;
+        }
     }
     
     public useDashSkill() {
@@ -530,6 +544,9 @@ export class Player extends Phaser.GameObjects.Container {
         if (this.dashCooldownTimer > 0) {
             this.dashCooldownTimer -= delta;
         }
+        if (this.rCooldownTimer > 0) {
+            this.rCooldownTimer -= delta;
+        }
     }
     
     private updateDash(delta: number) {
@@ -554,6 +571,41 @@ export class Player extends Phaser.GameObjects.Container {
         
         // Update trail effect
         this.updateTrailEffect(delta);
+    }
+
+    public useRSkill() {
+        if (!this.rSkillUnlocked || this.rCooldownTimer > 0) return;
+
+        this.rCooldownTimer = this.rCooldown;
+
+        const scene = this.scene as Phaser.Scene;
+        const gameScene = scene as any;
+
+        const mousePointer = scene.input.activePointer;
+        const mouseX = mousePointer.worldX;
+        const mouseY = mousePointer.worldY;
+
+        const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
+
+        for (let i = 0; i < 7 * this.rProjectileMultiplier; i++) {
+            scene.time.delayedCall(i * 50 / this.rProjectileMultiplier, () => {
+                const { damage, isCritical } = this.calculateDamage(this.attackDamage * 1.5);
+                const projectile = new ExplosiveProjectile(
+                    scene,
+                    this.x,
+                    this.y,
+                    damage,
+                    this.projectileSpeed * 1.5,
+                    angle,
+                    this.explosiveDamageMultiplier,
+                    this.explosiveBossDamageMultiplier,
+                    false,
+                    isCritical
+                );
+
+                gameScene.getProjectiles().add(projectile);
+            });
+        }
     }
 
     private updateShield(delta: number) {
@@ -609,7 +661,7 @@ export class Player extends Phaser.GameObjects.Container {
         const projectileCount = ( 5 + playerLevel ) * this.qSkillHomingMultiplier;
         
         for (let i = 0; i < projectileCount; i++) {
-            this.scene.time.delayedCall(i * 50, () => {
+            this.scene.time.delayedCall(i * 50 / this.qSkillHomingMultiplier, () => {
                 const angle = (i / projectileCount) * Math.PI * 2;
                 const offsetX = Math.cos(angle) * 30;
                 const offsetY = Math.sin(angle) * 30;
@@ -917,6 +969,10 @@ export class Player extends Phaser.GameObjects.Container {
         return this.eSkillUnlocked;
     }
 
+    public isRSkillUnlocked(): boolean {
+        return this.rSkillUnlocked;
+    }
+
     public getQSkillHomingMultiplier(): number {
         return this.qSkillHomingMultiplier;
     }
@@ -975,5 +1031,37 @@ export class Player extends Phaser.GameObjects.Container {
 
     public setESkillHeals(heals: boolean) {
         this.eSkillHeals = heals;
+    }
+
+    public setECooldown(cooldown: number) {
+        this.eCooldown = cooldown;
+    }
+
+    public getOriginalECooldown(): number {
+        return this.originalECooldown;
+    }
+
+    public setRCooldown(cooldown: number) {
+        this.rCooldown = cooldown;
+    }
+
+    public getRCooldown(): number {
+        return this.rCooldown;
+    }
+
+    public getOriginalRCooldown(): number {
+        return this.originalRCooldown;
+    }
+
+    public getRCooldownTimer(): number {
+        return this.rCooldownTimer;
+    }
+
+    public setRProjectileMultiplier(multiplier: number) {
+        this.rProjectileMultiplier = multiplier;
+    }
+
+    public useFSkill() {
+        // Placeholder for F skill
     }
 } 

@@ -35,7 +35,7 @@ export class Projectile extends Phaser.GameObjects.Container {
         this.isCritical = isCritical;
         
         // Create projectile sprite
-        this.sprite = scene.add.rectangle(0, 0, 8, 8, 0xffff00);
+        this.sprite = scene.add.rectangle(0, 0, 16, 16, 0xffff00);
         this.add(this.sprite);
         
         // Set velocity based on angle
@@ -45,8 +45,8 @@ export class Projectile extends Phaser.GameObjects.Container {
         // Add physics body
         scene.physics.add.existing(this);
         const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setSize(8, 8);
-        body.setOffset(-4, -4);
+        body.setSize(16, 16);
+        body.setOffset(-8, -8);
         body.setVelocity(this.velocityX, this.velocityY);
         
         scene.add.existing(this);
