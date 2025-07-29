@@ -1,31 +1,47 @@
-# 🕹️ Kyu Roguelike
+# Kyu Roguelike
 
-A web-based roguelike action game built with Phaser.js where your auto-attack evolves as you level up!
+A fast-paced web-based roguelike action game built with Phaser.js and TypeScript. Fight waves of enemies, level up, and evolve your attacks with powerful upgrades!
 
-## ✨ Features
+## 🎮 Game Features
 
-### Core Gameplay
-- **Auto-Attack System**: Continuous projectile firing without manual input
-- **Progressive Evolution**: Attacks become stronger and more complex as you level up
-- **Combo System**: Every 3rd hit triggers powerful combo attacks
-- **Mouse/Touch Movement**: Smooth player movement following cursor
+### Core Mechanics
+- **WASD Movement** - Smooth character control with diagonal normalization
+- **Right-Click Combat** - Manual shooting system with attack pause mechanics
+- **Progressive Leveling** - Gain XP from defeating enemies and choose powerful upgrades
+- **Enemy Variety** - Face different enemy types with unique behaviors:
+  - **Basic Enemies** - Standard melee attackers
+  - **Tank Enemies** - High HP, slow-moving bruisers
+  - **Ranged Enemies** - Long-range projectile attackers
+
+### Skills & Abilities
+- **Q Skill (Level 2+)** - Kai'Sa-inspired homing projectiles that curve toward enemies
+- **E Skill (Level 2+)** - Temporary shield that blocks all damage for 2 seconds
+- **Cooldown System** - Visual indicators show skill availability
 
 ### Upgrade System
-- **Level-Up Choices**: Choose from 3 random upgrades when you level up
-- **Build Diversity**: Attack speed, damage, projectile count, piercing, homing, and more
-- **Rarity System**: Common, Rare, Epic, and Legendary upgrades
-- **Synergistic Builds**: Combine upgrades for powerful combinations
+- **Attack Modifications**:
+  - Double/Triple Shot - Fire multiple projectiles
+  - Spread Attack - Wide-angle projectile spread
+  - Burst Attack - Rapid-fire projectiles in sequence
+  - Combo Master - Every 3rd shot becomes an explosive projectile
+- **Stat Improvements** - Increase damage, speed, and other attributes
+- **Stackable Effects** - Combine multiple upgrades for powerful synergies
 
-### Enemy System
-- **Wave-Based Spawning**: Enemies spawn in waves with increasing difficulty
-- **Enemy Types**: Basic, Fast, Tank, and Boss enemies with unique properties
-- **Boss Battles**: Special boss encounters every 10 waves
-- **Health Bars**: Visual health indicators for all enemies
+### Dynamic Gameplay
+- **Scaling Difficulty** - Enemy HP and spawn rates increase with player level
+- **Boss Encounters** - Special high-HP enemies appear periodically
+- **Physics-Based Combat** - Knockback effects for both player and enemies
+- **Visual Feedback** - Damage numbers, health bars, and impact effects
 
-### Visual Effects
-- **Death Effects**: Explosion particles when enemies die
-- **Boss Announcements**: Dramatic boss spawn notifications
-- **Upgrade UI**: Beautiful card-based upgrade selection interface
+## 🎯 Controls
+
+| Action | Control |
+|--------|---------|
+| Move | WASD Keys |
+| Attack | Right Mouse Button |
+| Q Skill | Q Key |
+| E Skill | E Key |
+| Select Upgrade | Left Mouse Button |
 
 ## 🚀 Getting Started
 
@@ -33,147 +49,101 @@ A web-based roguelike action game built with Phaser.js where your auto-attack ev
 - Node.js (v16 or higher)
 - npm or yarn
 
-### Installation
+### Local Development
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd kyu-roguelike
-```
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd kyu-roguelike
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-3. Start the development server:
-```bash
-npm run dev
-```
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
 
-4. Open your browser and navigate to `http://localhost:3000`
+4. **Open your browser**
+   - Navigate to `http://localhost:3000`
+   - The game will automatically reload when you make changes
 
-### Building for Production
+### Build for Production
 
 ```bash
 npm run build
 ```
 
-The built files will be in the `dist` directory.
+The built files will be in the `dist/` directory.
 
-## 🎮 How to Play
+## 🌐 Deployment
 
-### Controls
-- **Mouse/Touch**: Move your character by clicking or dragging
-- **Auto-Attack**: Your character automatically fires projectiles
-- **Level Up**: Gain XP by defeating enemies to unlock upgrades
+### Vercel (Recommended)
 
-### Gameplay Tips
-1. **Movement**: Stay mobile to avoid enemy swarms
-2. **Upgrade Strategy**: Focus on synergizing upgrades (e.g., attack speed + projectile count)
-3. **Boss Battles**: Bosses appear every 10 waves - be prepared!
-4. **Combo System**: Every 3rd shot triggers a powerful combo attack
+1. Push your code to GitHub
+2. Go to [vercel.com](https://vercel.com) and sign up with GitHub
+3. Click "New Project" and import your repository
+4. Vercel will automatically detect it's a Vite project and deploy it
+5. Your game will be live at `https://your-project-name.vercel.app`
 
-### Upgrade Types
+### Other Platforms
 
-#### Attack Speed
-- **Rapid Fire**: +20% attack speed
-- **Lightning Strike**: +40% attack speed
+The game is a static site and can be deployed to:
+- GitHub Pages
+- Netlify
+- Any static hosting service
 
-#### Damage
-- **Power Shot**: +5 damage
-- **Mega Blast**: +15 damage
+Simply upload the contents of the `dist/` folder after running `npm run build`.
 
-#### Projectile Count
-- **Double Shot**: Fire 2 projectiles
-- **Triple Shot**: Fire 3 projectiles
+## 🛠️ Technical Stack
 
-#### Special Abilities
-- **Piercing Shot**: Projectiles pass through enemies
-- **Homing Missiles**: Projectiles seek nearest enemy
+- **Game Engine**: Phaser.js v3.70
+- **Language**: TypeScript
+- **Build Tool**: Vite
+- **Physics**: Phaser Arcade Physics
+- **Deployment**: Vercel/Static hosting
 
-#### Legendary Upgrades
-- **Combo Master**: Enhanced combo attacks
-- **Rapid Burst**: 8-direction burst attack
+## 🎨 Game Architecture
 
-## 🛠️ Technical Details
+### Scene Structure
+- **GameScene** - Main gameplay, entity management, UI
+- **UIScene** - Level-up upgrade selection interface
 
-### Tech Stack
-- **Phaser.js 3.70**: Game engine
-- **TypeScript**: Type safety and better development experience
-- **Vite**: Fast development and building
-- **HTML5 Canvas**: Rendering
+### Entity System
+- **Player** - Character with health, skills, and upgrade effects
+- **BaseEnemy** - Abstract enemy class with shared behaviors
+- **TankEnemy/RangedEnemy** - Specialized enemy types
+- **Projectile System** - Various projectile types (basic, explosive, homing)
 
-### Project Structure
-```
-src/
-├── main.ts              # Game entry point
-├── scenes/
-│   ├── GameScene.ts     # Main game scene
-│   └── UIScene.ts      # Level-up UI scene
-├── entities/
-│   ├── Player.ts        # Player character
-│   ├── Enemy.ts         # Enemy types
-│   └── Projectile.ts    # Projectile system
-└── systems/
-    ├── UpgradeManager.ts # Upgrade system
-    └── EnemySpawner.ts  # Enemy spawning
-```
+### Systems
+- **UpgradeManager** - Handles upgrade selection and effects
+- **EnemySpawner** - Manages wave-based enemy spawning
+- **Physics** - Collision detection and knockback effects
 
-### Key Systems
+## 🎯 Gameplay Tips
 
-#### Auto-Attack System
-- Continuous projectile firing at fixed intervals
-- Configurable attack speed, damage, and projectile count
-- Combo system for every 3rd attack
+1. **Positioning is Key** - Use the camera follow system to stay aware of threats
+2. **Upgrade Synergy** - Combine Spread Attack + Burst Attack for maximum firepower
+3. **Skill Management** - Use Q skill for crowd control, E skill for emergency defense
+4. **Enemy Prioritization** - Take out ranged enemies first, use tanks as shields
+5. **Combo Master** - Every 3rd shot explodes - time it for maximum impact
 
-#### Upgrade System
-- Random upgrade selection on level-up
-- Rarity-based upgrade categories
-- Synergistic upgrade combinations
+## 🐛 Known Issues
 
-#### Enemy Spawning
-- Wave-based spawning with difficulty scaling
-- Multiple enemy types with unique behaviors
-- Boss encounters every 10 waves
-
-## 🎯 Future Features
-
-### Planned Enhancements
-- [ ] **Item System**: Equippable items with passive effects
-- [ ] **Skill Trees**: Branching upgrade paths
-- [ ] **Save System**: Progress persistence
-- [ ] **Sound Effects**: Audio feedback
-- [ ] **Particle Effects**: Enhanced visual effects
-- [ ] **Multiple Characters**: Different playable characters
-- [ ] **Achievements**: Unlockable achievements
-- [ ] **Leaderboards**: High score tracking
-
-### Technical Improvements
-- [ ] **Performance Optimization**: Better frame rates
-- [ ] **Mobile Support**: Touch controls optimization
-- [ ] **Accessibility**: Screen reader support
-- [ ] **Localization**: Multiple language support
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- Large initial repository size (resolved with .gitignore)
+- Occasional GitHub push timeouts (usually succeeds despite error message)
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is open source and available under the MIT License.
 
-## 🙏 Acknowledgments
+## 🤝 Contributing
 
-- **Vampire Survivors**: Inspiration for auto-attack mechanics
-- **HoloCure**: Inspiration for upgrade system
-- **League of Legends (Kai'Sa)**: Inspiration for projectile behavior
-- **Phaser.js Community**: Excellent game engine and documentation
+Feel free to submit issues and enhancement requests!
 
 ---
 
-**Enjoy the game!** 🎮✨
+**Enjoy the game!** 🎮
