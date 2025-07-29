@@ -128,26 +128,34 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         // Damage all enemies in explosion radius
         const enemies = gameScene.getEnemies().getChildren();
         enemies.forEach((enemy: any) => {
-            const dx = enemy.x - this.x;
-            const dy = enemy.y - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= this.explosionRadius) {
-                // Deal damage to enemy
-                let damage = this.damage * this.explosiveDamageMultiplier;
-                if (enemy.isBossEnemy()) {
-                    damage *= this.explosiveBossDamageMultiplier;
-                }
-                enemy.takeDamage(damage);
+            if (enemy.body) {
+                const hitbox = enemy.body as Phaser.Physics.Arcade.Body;
                 
-                // Add knockback effect
-                if (distance > 0) {
-                    const knockbackForce = 80;
-                    const knockbackX = (dx / distance) * knockbackForce;
-                    const knockbackY = (dy / distance) * knockbackForce;
+                // Find the closest point on the hitbox to the explosion center
+                const closestX = Phaser.Math.Clamp(this.x, hitbox.left, hitbox.right);
+                const closestY = Phaser.Math.Clamp(this.y, hitbox.top, hitbox.bottom);
+                
+                const dx = closestX - this.x;
+                const dy = closestY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance <= this.explosionRadius) {
+                    // Deal damage to enemy
+                    let damage = this.damage * this.explosiveDamageMultiplier;
+                    if (enemy.isBossEnemy) { // Corrected: Check if the method exists
+                        damage *= this.explosiveBossDamageMultiplier;
+                    }
+                    enemy.takeDamage(damage);
                     
-                    enemy.x += knockbackX;
-                    enemy.y += knockbackY;
+                    // Add knockback effect
+                    if (distance > 0) {
+                        const knockbackForce = 80;
+                        const knockbackX = (dx / distance) * knockbackForce;
+                        const knockbackY = (dy / distance) * knockbackForce;
+                        
+                        enemy.x += knockbackX;
+                        enemy.y += knockbackY;
+                    }
                 }
             }
         });
