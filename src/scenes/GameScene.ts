@@ -196,31 +196,45 @@ export class GameScene extends Phaser.Scene {
 
     public showItemTooltip(x: number, y: number, itemData: ItemData) {
         const text = `${itemData.name}\n${itemData.description}`;
-        this.showTooltip(x, y, text, false);
+        this.showSmartTooltip(x, y, text, false);
     }
 
-    public hideItemTooltip() {
+    public hideTooltip() {
         if (this.tooltip) {
             this.tooltip.destroy();
         }
     }
 
-    private showTooltip(x: number, y: number, text: string, isSkill: boolean) {
-        this.hideItemTooltip();
+    private showSmartTooltip(x: number, y: number, text: string, isUI: boolean) {
+        this.hideTooltip();
+
         const tooltipText = this.add.text(0, 0, text, {
-            fontSize: '28px',
+            fontSize: '20px',
             color: '#ffffff',
             backgroundColor: '#000000',
-            padding: { x: 5, y: 5 }
+            padding: { x: 10, y: 5 },
+            wordWrap: { width: 300, useAdvancedWrap: true }
         });
 
-        if (isSkill) {
-            tooltipText.setOrigin(1, 1);
-        }
+        tooltipText.setOrigin(0, 1);
 
+        if (isUI) {
+            const tooltipWidth = tooltipText.width;
+            const tooltipHeight = tooltipText.height;
+            const screenWidth = this.scale.width;
+
+            if (x + tooltipWidth > screenWidth) {
+                tooltipText.setOrigin(1, 1);
+            }
+            if (y - tooltipHeight < 0) {
+                tooltipText.setOrigin(tooltipText.originX, 0);
+            }
+        }
+        
         this.tooltip = this.add.container(x, y, [tooltipText]);
         this.tooltip.setDepth(5000);
-        if (isSkill) {
+
+        if (isUI) {
             this.tooltip.setScrollFactor(0);
         }
     }
@@ -232,7 +246,7 @@ export class GameScene extends Phaser.Scene {
             if (skillData.damageMultiplier) {
                 text += `\nDamage: ${skillData.damageMultiplier * 100}%`;
             }
-            this.showTooltip(this.input.x, this.input.y, text, true);
+            this.showSmartTooltip(this.input.x, this.input.y, text, true);
         }
     }
 
@@ -361,10 +375,14 @@ export class GameScene extends Phaser.Scene {
             };
             const color = rarityColors[item.rarity] || 0xffffff;
 
-            const itemSprite = this.add.rectangle(index * 40, 0, 30, 30, color)
+            const itemSprite = this.add.rectangle(index * 50, 0, 40, 40, 0x1a1a1a)
+                .setStrokeStyle(2, color)
                 .setInteractive()
-                .on('pointerover', (pointer: Phaser.Input.Pointer) => this.showItemTooltip(pointer.worldX, pointer.worldY, item))
-                .on('pointerout', () => this.hideItemTooltip());
+                .on('pointerover', (pointer: Phaser.Input.Pointer) => {
+                    const text = `${item.name}\n${item.description}`;
+                    this.showSmartTooltip(pointer.x, pointer.y, text, true);
+                })
+                .on('pointerout', () => this.hideTooltip());
             this.itemUI.add(itemSprite);
         });
     }
@@ -682,13 +700,13 @@ export class GameScene extends Phaser.Scene {
         let startX = screenWidth - (skillSpacing * 5);
 
         // Item UI (bottom left)
-        this.itemUI = this.add.container(20, screenHeight - 40).setScrollFactor(0).setDepth(1000);
+        this.itemUI = this.add.container(40, screenHeight - 100).setScrollFactor(0).setDepth(1000);
 
         // Dash Skill UI (Shift)
         this.dashSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
             .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
             .on('pointerover', () => this.showSkillTooltip('DASH'))
-            .on('pointerout', this.hideItemTooltip);
+            .on('pointerout', () => this.hideTooltip());
         const dashBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const dashText = this.add.text(0, 0, '⚡', { 
             fontSize: '20px', 
@@ -708,7 +726,7 @@ export class GameScene extends Phaser.Scene {
         this.qSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
             .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
             .on('pointerover', () => this.showSkillTooltip('Q'))
-            .on('pointerout', this.hideItemTooltip);
+            .on('pointerout', () => this.hideTooltip());
         const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const qText = this.add.text(0, 0, 'Q', { 
             fontSize: '24px', 
@@ -728,7 +746,7 @@ export class GameScene extends Phaser.Scene {
         this.eSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
             .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
             .on('pointerover', () => this.showSkillTooltip('E'))
-            .on('pointerout', this.hideItemTooltip);
+            .on('pointerout', () => this.hideTooltip());
         const eBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const eText = this.add.text(0, 0, 'E', { 
             fontSize: '24px', 
@@ -748,7 +766,7 @@ export class GameScene extends Phaser.Scene {
         this.rSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
             .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
             .on('pointerover', () => this.showSkillTooltip('R'))
-            .on('pointerout', this.hideItemTooltip);
+            .on('pointerout', () => this.hideTooltip());
         const rBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const rText = this.add.text(0, 0, 'R', { 
             fontSize: '24px', 
@@ -768,8 +786,8 @@ export class GameScene extends Phaser.Scene {
         this.fSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
             .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
             .on('pointerover', () => this.showSkillTooltip('F'))
-            .on('pointerout', this.hideItemTooltip);
-        const fBg = this.add.rectangle(0, 0, 50, 50, 0x1a1a1a);
+            .on('pointerout', () => this.hideTooltip());
+        const fBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
         const fText = this.add.text(0, 0, 'F', { 
             fontSize: '24px', 
             fontFamily: 'Helvetica, Arial, sans-serif',

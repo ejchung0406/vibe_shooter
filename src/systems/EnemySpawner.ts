@@ -240,7 +240,14 @@ export class EnemySpawner {
         this.difficultyMultiplier = 1 + (this.waveNumber - 1) * 0.1;
         
         // Decrease spawn interval (faster spawning)
-        this.spawnInterval = Math.max(500, 2000 - (this.waveNumber - 1) * 100);
+        if (this.waveNumber <= 3) {
+            this.spawnInterval = 3000 - (this.waveNumber - 1) * 200; // Slower start
+        } else if (this.waveNumber <= 10) {
+            this.spawnInterval = 2400 - (this.waveNumber - 3) * 150; // Moderate increase
+        } else {
+            this.spawnInterval = 1350 - (this.waveNumber - 10) * 50; // Faster increase
+        }
+        this.spawnInterval = Math.max(200, this.spawnInterval); // Minimum spawn interval
         
         // Increase max enemies
         this.maxEnemiesOnScreen = Math.min(50, 20 + Math.floor(this.waveNumber / 5));
