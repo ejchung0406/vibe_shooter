@@ -122,6 +122,13 @@ export class UIScene extends Phaser.Scene {
         return container;
     }
 
+    public setInteractive(isInteractive: boolean) {
+        this.upgradeCards.forEach(card => {
+            const background = card.list[0] as Phaser.GameObjects.Rectangle;
+            background.setInteractive(isInteractive);
+        });
+    }
+
     private selectUpgrade(upgrade: any) {
         // Apply the upgrade
         this.upgradeManager.applyUpgrade(upgrade);
@@ -134,10 +141,5 @@ export class UIScene extends Phaser.Scene {
     private setupInput() {
         // Only allow clicking on upgrade cards - no auto-selection
         // The UI will stay until player makes a choice
-
-        this.input.keyboard.on('keydown-SPACE', () => {
-            this.scene.resume('GameScene');
-            this.scene.stop();
-        });
     }
 } 

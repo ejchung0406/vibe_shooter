@@ -10,6 +10,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected healthBar!: Phaser.GameObjects.Rectangle;
     protected healthBarBg!: Phaser.GameObjects.Rectangle;
     protected baseHealthMultiplier: number = 1;
+    protected isBoss: boolean = false;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -58,8 +59,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         // HP scaling map based on player level
         const hpScalingMap: { [key: number]: number } = {
-            1: 15, 2: 18, 3: 22, 4: 27, 5: 33,
-            6: 40, 7: 48, 8: 57, 9: 67, 10: 80
+            1: 15, 2: 20, 3: 25, 4: 30, 5: 45,
+            6: 60, 7: 80, 8: 100, 9: 150, 10: 250,
+            11: 350, 12: 550, 13: 800, 14: 1000, 15: 3000,
         };
         
         // Get base HP for current level (default to level 10 if higher)
@@ -273,5 +275,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
 
     public getXPValue() {
         return this.xpValue;
+    }
+
+    public isBossEnemy(): boolean {
+        return this.isBoss;
     }
 } 

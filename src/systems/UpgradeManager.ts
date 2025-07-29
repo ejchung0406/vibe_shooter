@@ -40,12 +40,12 @@ export class UpgradeManager {
                 }
             },
             {
-                id: "burst_fire",
-                name: "Burst Fire",
-                description: "Fire projectiles in rapid sequence",
-                rarity: "rare", 
+                id: "quad_shot",
+                name: "Quadruple Shot", 
+                description: "Add 3 more projectiles",
+                rarity: "epic",
                 effect: (player: any) => {
-                    player.enableBurstAttack();
+                    player.projectileCount += 3;
                 }
             },
             {
@@ -102,6 +102,35 @@ export class UpgradeManager {
                 rarity: "epic",
                 effect: (player: any) => {
                     player.piercing = true;
+                }
+            },
+
+            // Skill improvements
+            {
+                id: "auto_q",
+                name: "Double Homing",
+                description: "Double the number of projectiles from Q",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.setQSkillHomingMultiplier(2);
+                }
+            },
+            {
+                id: "wombo_combo_master",
+                name: "Wombo Combo Master",
+                description: "Explosive shot deals 1.5x damage to enemies",
+                rarity: "epic",
+                effect: (player: any) => {
+                    player.setExplosiveDamageMultiplier(1.5);
+                }
+            },
+            {
+                id: "combo_killer",
+                name: "Combo Killer",
+                description: "Explosive shot deals 5x damage to bosses",
+                rarity: "legendary",
+                effect: (player: any) => {
+                    player.setExplosiveBossDamageMultiplier(5);
                 }
             }
         ];

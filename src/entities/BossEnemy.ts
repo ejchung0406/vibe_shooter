@@ -17,6 +17,7 @@ export class BossEnemy extends BaseEnemy {
         this.moveSpeed = 30; // Slower than tank
         this.damage = 25; // High damage
         this.xpValue = 500; // Lots of XP
+        this.isBoss = true;
         
         // Make boss 10x bigger
         this.setScale(10);
@@ -26,6 +27,14 @@ export class BossEnemy extends BaseEnemy {
         
         // Update health bar for boss
         this.createHealthBar();
+
+        // Make boss attack faster if the wave is higher
+        const gameScene = this.scene as any;
+        const enemySpawner = gameScene.getEnemySpawner();
+        if (enemySpawner) {
+            this.singleShotCooldown *= (10 - enemySpawner.getWaveNumber()) / 10;
+            this.barrageCooldown *= (10 - enemySpawner.getWaveNumber()) / 10;
+        }
     }
 
     protected setupHitbox() {

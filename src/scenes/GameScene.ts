@@ -82,6 +82,10 @@ export class GameScene extends Phaser.Scene {
         this.enemySpawner.startSpawning();
         this.enemySpawner.preSpawnEnemies(5);
         
+        // Create character stats UI
+        this.createCharacterStatsUI();
+        this.createPauseUI();
+        
         // Setup input
         this.setupInput();
 
@@ -369,7 +373,7 @@ export class GameScene extends Phaser.Scene {
     private updateWaveDisplay() {
         if (!this.waveText || !this.enemySpawner) return;
         
-        const currentWave = this.enemySpawner.getCurrentWave();
+        const currentWave = this.enemySpawner.getWaveNumber();
         const enemiesKilled = this.enemySpawner.getEnemiesKilledThisWave();
         const enemiesToKill = this.enemySpawner.getEnemiesToKillPerWave();
         
@@ -377,36 +381,36 @@ export class GameScene extends Phaser.Scene {
     }
 
     private createBackground() {
-        // Create a grid pattern background
         const gridSize = 100;
-        const mapWidth = this.scale.width * 6;
-        const mapHeight = this.scale.height * 6;
-        
-        // Create background graphics object
-        const background = this.add.graphics();
-        background.setPosition(-mapWidth/2, -mapHeight/2);
-        
-        // Set line style (brighter and more visible)
-        background.lineStyle(1, 0x666666, 0.6);
-        
-        // Draw vertical lines
-        for (let x = 0; x <= mapWidth; x += gridSize) {
-            background.beginPath();
-            background.moveTo(x, 0);
-            background.lineTo(x, mapHeight);
-            background.strokePath();
-        }
-        
-        // Draw horizontal lines
-        for (let y = 0; y <= mapHeight; y += gridSize) {
-            background.beginPath();
-            background.moveTo(0, y);
-            background.lineTo(mapWidth, y);
-            background.strokePath();
-        }
-        
-        // Move background to the back
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        // Create an in-memory texture for the grid pattern
+        const gridTexture = this.textures.createCanvas('grid', gridSize, gridSize);
+        if (!gridTexture) return;
+        const context = gridTexture.getContext();
+
+        // Draw the grid lines onto the texture
+        context.strokeStyle = '#666666';
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(0, gridSize);
+        context.lineTo(gridSize, gridSize);
+        context.moveTo(gridSize, 0);
+        context.lineTo(gridSize, gridSize);
+        context.stroke();
+        gridTexture.refresh();
+
+        // Create a tiling sprite using the new texture
+        const background = this.add.tileSprite(0, 0, screenWidth, screenHeight, 'grid');
+        background.setOrigin(0, 0);
+        background.setScrollFactor(0); // The tileSprite will be moved manually
         background.setDepth(-1000);
+
+        // We'll update the tilePosition in the update loop to match the camera
+        this.events.on('update', () => {
+            background.setTilePosition(this.cameras.main.scrollX, this.cameras.main.scrollY);
+        });
     }
 
     private setupCamera() {
@@ -692,16 +696,24 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         this.pauseContainer = this.add.container(0, 0, [overlay, pauseText]);
-        this.pauseContainer.setScrollFactor(0).setDepth(3000).setVisible(false);
+        this.pauseContainer.setScrollFactor(0).setDepth(4000).setVisible(false); // Higher depth
     }
     
     private togglePause() {
+        const uiScene = this.scene.get('UIScene') as any;
+
         if (this.scene.isPaused()) {
             this.scene.resume();
             this.pauseContainer.setVisible(false);
+            if (uiScene && uiScene.scene.isActive()) {
+                uiScene.setInteractive(true);
+            }
         } else {
             this.scene.pause();
             this.pauseContainer.setVisible(true);
+            if (uiScene && uiScene.scene.isActive()) {
+                uiScene.setInteractive(false);
+            }
         }
     }
 } 

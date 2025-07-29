@@ -22,7 +22,6 @@ export class Player extends Phaser.GameObjects.Container {
     private piercing: boolean = false;
     private projectileSpeed: number = 300;
     private isAttacking: boolean = false;
-    private attackPauseDuration: number = 200; // milliseconds
     private attackPauseTimer: number = 0;
     private health: number = 100;
     private maxHealth: number = 100;
@@ -37,10 +36,10 @@ export class Player extends Phaser.GameObjects.Container {
     private comboCounter: number = 0;
     private comboThreshold: number = 3;
     private hasSpreadAttack: boolean = false; // Spread attack upgrade
-    private hasBurstAttack: boolean = false; // Burst attack upgrade
     private hasComboMaster: boolean = false; // Combo master upgrade
     private shotCounter: number = 0; // Track shots for combo
-    
+    private qSkillHomingMultiplier: number = 1;
+
     // Skills
     private qSkillUnlocked: boolean = false;
     private eSkillUnlocked: boolean = false;
@@ -132,7 +131,7 @@ export class Player extends Phaser.GameObjects.Container {
         // Update attack pause timer
         if (this.isAttacking) {
             this.attackPauseTimer += delta;
-            if (this.attackPauseTimer >= this.attackPauseDuration) {
+            if (this.attackPauseTimer >= this.attackCooldown) {
                 this.isAttacking = false;
                 this.attackPauseTimer = 0;
             }
@@ -173,9 +172,10 @@ export class Player extends Phaser.GameObjects.Container {
         this.updateDash(delta);
         
         // Movement is now handled by physics velocity
+        
+        // Keep player within camera bounds
+        this.constrainToCamera();
     }
-
-
 
     private triggerComboAttack() {
         const scene = this.scene as Phaser.Scene;
@@ -565,31 +565,35 @@ export class Player extends Phaser.GameObjects.Container {
         
         // Create homing projectiles (5 + player level)
         const playerLevel = gameScene.getPlayerLevel();
-        const projectileCount = 5 + playerLevel;
+        const projectileCount = ( 5 + playerLevel ) * this.qSkillHomingMultiplier;
         
         for (let i = 0; i < projectileCount; i++) {
-            const angle = (i / projectileCount) * Math.PI * 2;
-            const offsetX = Math.cos(angle) * 30;
-            const offsetY = Math.sin(angle) * 30;
-            
-            // Distribute projectiles between targets
-            let targetIndex = 0;
-            if (targetEnemies.length === 2) {
-                targetIndex = i < Math.floor(projectileCount / 2) ? 0 : 1; // Split evenly between enemies
-            }
-            
-            const target = targetEnemies[targetIndex];
-            
-            const projectile = new QProjectile(
-                scene,
-                this.x + offsetX,
-                this.y + offsetY,
-                this.attackDamage * 0.6,
-                target.fixedX,
-                target.fixedY
-            );
-            
-            gameScene.getProjectiles().add(projectile);
+            this.scene.time.delayedCall(i * 100, () => {
+                const angle = (i / projectileCount) * Math.PI * 2;
+                const offsetX = Math.cos(angle) * 30;
+                const offsetY = Math.sin(angle) * 30;
+                
+                // Distribute projectiles between targets
+                let targetIndex = 0;
+                if (targetEnemies.length === 2) {
+                    targetIndex = i < Math.floor(projectileCount / 2) ? 0 : 1; // Split evenly between enemies
+                }
+                
+                if (targetEnemies[targetIndex]) {
+                    const target = targetEnemies[targetIndex];
+                    
+                    const projectile = new QProjectile(
+                        scene,
+                        this.x + offsetX,
+                        this.y + offsetY,
+                        this.attackDamage * 0.6,
+                        target.fixedX,
+                        target.fixedY
+                    );
+                    
+                    gameScene.getProjectiles().add(projectile);
+                }
+            });
         }
     }
 
@@ -615,6 +619,24 @@ export class Player extends Phaser.GameObjects.Container {
                 }
             });
         }
+    }
+
+    private constrainToCamera() {
+        const camera = this.scene.cameras.main;
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (!body) return;
+
+        const worldView = camera.worldView;
+        const halfWidth = body.width / 2;
+        const halfHeight = body.height / 2;
+
+        const minX = worldView.x + halfWidth;
+        const maxX = worldView.right - halfWidth;
+        const minY = worldView.y + halfHeight;
+        const maxY = worldView.bottom - halfHeight;
+
+        this.x = Phaser.Math.Clamp(this.x, minX, maxX);
+        this.y = Phaser.Math.Clamp(this.y, minY, maxY);
     }
 
     public useESkill() {
@@ -741,10 +763,6 @@ export class Player extends Phaser.GameObjects.Container {
         this.hasSpreadAttack = true;
     }
 
-    public enableBurstAttack() {
-        this.hasBurstAttack = true;
-    }
-
     public enableComboMaster() {
         this.hasComboMaster = true;
     }
@@ -796,5 +814,13 @@ export class Player extends Phaser.GameObjects.Container {
 
     public isESkillUnlocked(): boolean {
         return this.eSkillUnlocked;
+    }
+
+    public getQSkillHomingMultiplier(): number {
+        return this.qSkillHomingMultiplier;
+    }
+
+    public setQSkillHomingMultiplier(multiplier: number) {
+        this.qSkillHomingMultiplier = multiplier;
     }
 } 

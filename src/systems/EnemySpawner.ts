@@ -6,10 +6,10 @@ import { BossEnemy } from '../entities/BossEnemy';
 export class EnemySpawner {
     private scene: GameScene;
     private spawnTimer: number = 0;
-    private spawnInterval: number = 4000; // 4 seconds (slower spawning)
+    private spawnInterval: number = 2000; // 4 seconds (slower spawning)
     private waveNumber: number = 1;
-    private enemiesPerWave: number = 2; // Fewer enemies per wave
-    private bossSpawnInterval: number = 1; // Boss every 3 waves (3, 6, 9, ...) for debugging
+    private enemiesPerWave: number = 3; // Fewer enemies per wave
+    private bossSpawnInterval: number = 3; // Boss every 3 waves (3, 6, 9, ...) for debugging
     private bossActive: boolean = false; // Track if boss is currently active
     
     // Wave system based on kills
@@ -164,10 +164,6 @@ export class EnemySpawner {
         if (gameScene.updateWaveCounter) {
             gameScene.updateWaveCounter(this.waveNumber);
         }
-    }
-    
-    public getCurrentWave(): number {
-        return this.waveNumber;
     }
     
     public getEnemiesKilledThisWave(): number {

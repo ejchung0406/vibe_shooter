@@ -10,6 +10,8 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
     private lifetime: number = 3000;
     private age: number = 0;
     private explosionRadius: number = 120; // Increased from 80 (1.5x)
+    private explosiveDamageMultiplier: number = 1;
+    private explosiveBossDamageMultiplier: number = 1;
 
     constructor(
         scene: Phaser.Scene,
@@ -127,7 +129,11 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
             
             if (distance <= this.explosionRadius) {
                 // Deal damage to enemy
-                enemy.takeDamage(this.damage);
+                let damage = this.damage * this.explosiveDamageMultiplier;
+                if (enemy.isBossEnemy()) {
+                    damage *= this.explosiveBossDamageMultiplier;
+                }
+                enemy.takeDamage(damage);
                 
                 // Add knockback effect
                 if (distance > 0) {
@@ -172,5 +178,21 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
 
     public isPiercing() {
         return this.piercing;
+    }
+
+    public getExplosiveDamageMultiplier() {
+        return this.explosiveDamageMultiplier;
+    }
+
+    public setExplosiveDamageMultiplier(multiplier: number) {
+        this.explosiveDamageMultiplier = multiplier;
+    }
+
+    public getExplosiveBossDamageMultiplier() {
+        return this.explosiveBossDamageMultiplier;
+    }
+
+    public setExplosiveBossDamageMultiplier(multiplier: number) {
+        this.explosiveBossDamageMultiplier = multiplier;
     }
 } 
