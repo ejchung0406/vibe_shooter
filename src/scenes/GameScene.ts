@@ -43,7 +43,7 @@ export class GameScene extends Phaser.Scene {
     private dashSkillUI!: Phaser.GameObjects.Container; // Dash skill UI
     private rSkillUI!: Phaser.GameObjects.Container;
     private fSkillUI!: Phaser.GameObjects.Container;
-    private itemUI!: Phaser.GameObjects.Container;
+    private itemContainers: Phaser.GameObjects.Container[] = [];
     
     // Character stats UI
     private statsContainer!: Phaser.GameObjects.Container;
@@ -114,8 +114,20 @@ export class GameScene extends Phaser.Scene {
         this.createCharacterStatsUI();
         this.createPauseUI();
         
+        // Initialize item UI
+        this.updateItemUI();
+        
         // Setup input
         this.setupInput();
+        
+        // Debug logging removed
+
+        // Add a test item near the player for debugging (remove this later)
+        const testItemData = this.itemManager.getItem('basic_sword');
+        if (testItemData) {
+            const testItem = new Item(this, 100, 100, testItemData);
+            this.addItem(testItem);
+        }
 
         window.addEventListener('keydown', this.handleKeyDown);
         this.events.on('shutdown', this.shutdown, this);
@@ -152,7 +164,6 @@ export class GameScene extends Phaser.Scene {
         // Update UI
         this.updateUI();
         this.updateSkillUI();
-        this.updateItemUI();
         this.updateCamera();
         
         // Update character stats display
@@ -166,6 +177,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     private handleItemPickup(player: any, item: any) {
+        console.log('Item picked up:', item.getItemData().name); // Debug log
         player.addItem(item);
         this.showItemCollectedPopup(item.getItemData());
         this.updateItemUI();
@@ -365,8 +377,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     private updateItemUI() {
-        this.itemUI.removeAll(true);
+        // Remove existing item containers
+        this.itemContainers.forEach(container => {
+            container.destroy();
+        });
+        this.itemContainers = [];
+        
         const items = this.player.getItems();
+        const screenHeight = this.scale.height;
+        const itemY = screenHeight - 100; // Same Y as skills
+        const itemStartX = 40; // Bottom left starting position
+        
         items.forEach((item, index) => {
             const rarityColors = {
                 common: 0xffffff,
@@ -376,42 +397,106 @@ export class GameScene extends Phaser.Scene {
             };
             const color = rarityColors[item.rarity] || 0xffffff;
 
-            const itemSprite = this.add.rectangle(index * 50, 0, 40, 40, 0x1a1a1a)
-                .setStrokeStyle(2, color)
-                .setInteractive()
-                .on('pointerover', (pointer: Phaser.Input.Pointer) => {
-                    const text = `${item.name}\n${item.description}`;
-                    // Use the input position for UI tooltips
-                    this.showSmartTooltip(this.input.x, this.input.y, text, true);
-                })
-                .on('pointerout', () => this.hideTooltip());
-            this.itemUI.add(itemSprite);
+            // Create item container directly on scene (EXACTLY like skill UI)
+            const itemContainer = this.add.container(itemStartX + (index * 50), itemY).setScrollFactor(0).setDepth(1500);
+            console.log(`Creating item container ${index} at position:`, itemStartX + (index * 50), itemY);
+            
+            // Create the item background rectangle - make it more visible for debugging
+            const itemBg = this.add.rectangle(0, 0, 40, 40, 0xff0000); // Red background for debugging
+            itemBg.setStrokeStyle(2, color);
+            
+            // Add the background to the container
+            itemContainer.add(itemBg);
+            
+            // Try simplified interactive setup
+            itemContainer.setSize(40, 40);
+            itemContainer.setInteractive();
+            
+            // Add hover effects and tooltip (EXACTLY like skill UI)
+            itemContainer.on('pointerover', () => {
+                console.log('Item hover detected:', item.name); // Debug log
+                itemBg.setFillStyle(0x333333, 0.8); // Darker on hover
+                const text = `${item.name}\n${item.description}`;
+                this.showSmartTooltip(this.input.x, this.input.y, text, true);
+            });
+            
+            itemContainer.on('pointerout', () => {
+                console.log('Item hover out detected:', item.name); // Debug log
+                itemBg.setFillStyle(0xff0000); // Back to red
+                this.hideTooltip();
+            });
+
+            this.itemContainers.push(itemContainer);
         });
     }
 
     private showItemCollectedPopup(itemData: ItemData) {
+        console.log('Showing item popup for:', itemData.name); // Debug log
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        const popup = this.add.container(screenWidth / 2, screenHeight / 2);
-        const background = this.add.rectangle(0, 0, 300, 100, 0x000000, 0.8);
-        const text = this.add.text(0, 0, `Item Obtained!\n${itemData.name}`, {
+        // Create popup container
+        const popup = this.add.container(screenWidth / 2, screenHeight * 0.4);
+        
+        // Create background with border
+        const background = this.add.rectangle(0, 0, 350, 120, 0x000000, 0.9);
+        const border = this.add.rectangle(0, 0, 350, 120, 0x00ff88, 0);
+        border.setStrokeStyle(3, 0x00ff88);
+        
+        // Create title text
+        const titleText = this.add.text(0, -30, 'ITEM OBTAINED!', {
+            fontSize: '20px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#00ff88',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        // Create item name text
+        const itemText = this.add.text(0, 10, itemData.name, {
             fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
-            align: 'center'
+            fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        popup.add([background, text]);
-        popup.setScrollFactor(0).setDepth(6000);
+        // Add all elements to popup
+        popup.add([background, border, titleText, itemText]);
+        popup.setScrollFactor(0).setDepth(7000); // Higher depth to ensure visibility
 
+        // Start with full opacity
+        popup.setAlpha(1);
+
+        // Make popup more visible with a flash effect
         this.tweens.add({
             targets: popup,
-            alpha: 0,
-            y: popup.y - 50,
-            duration: 2000,
-            ease: 'Power2',
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 150,
+            ease: 'Back.easeOut',
             onComplete: () => {
-                popup.destroy();
+                // Return to normal size
+                this.tweens.add({
+                    targets: popup,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 150,
+                    ease: 'Back.easeOut',
+                    onComplete: () => {
+                        // Keep visible for longer, then fade out
+                        this.tweens.add({
+                            targets: popup,
+                            alpha: 0,
+                            y: popup.y - 50,
+                            duration: 2000,
+                            delay: 2000, // Wait 2 seconds before fading
+                            ease: 'Power2',
+                            onComplete: () => {
+                                console.log('Popup destroyed for:', itemData.name); // Debug log
+                                popup.destroy();
+                            }
+                        });
+                    }
+                });
             }
         });
     }
@@ -706,8 +791,7 @@ export class GameScene extends Phaser.Scene {
         const skillSpacing = 70;
         let startX = screenWidth - (skillSpacing * 5);
 
-        // Item UI (bottom left)
-        this.itemUI = this.add.container(40, screenHeight - 100).setScrollFactor(0).setDepth(1000);
+        // Item containers will be created dynamically in updateItemUI()
 
         // Dash Skill UI (Shift)
         this.dashSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
@@ -827,6 +911,8 @@ export class GameScene extends Phaser.Scene {
         const statsBg = this.add.rectangle(0, 0, 220, 230, 0x000000, 0.7);
         statsBg.setStrokeStyle(2, 0x333333);
         statsBg.setOrigin(0, 0);
+        // Remove problematic setInteractive call
+        // statsBg.setInteractive(false);
         
         // Title
         const statsTitle = this.add.text(10, 10, 'CHARACTER STATS', {
@@ -1037,85 +1123,14 @@ export class GameScene extends Phaser.Scene {
             color: '#ffffff',
         }).setOrigin(0.5);
 
-        // Resume button
-        const resumeRect = this.add.rectangle(0, 0, 200, 60, 0x00ff88);
-        const resumeText = this.add.text(0, 0, 'Resume', {
-            fontSize: '24px',
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#000000',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        const resumeButton = this.add.container(screenWidth / 2, screenHeight * 0.6, [resumeRect, resumeText]);
-
-        // Return to menu button
-        const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
-        const menuText = this.add.text(0, 0, 'Main Menu', {
+        const resumeText = this.add.text(screenWidth / 2, screenHeight * 0.6, 'Press ESC to resume', {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
-            fontStyle: 'bold'
         }).setOrigin(0.5);
-        const menuButton = this.add.container(screenWidth / 2, screenHeight * 0.75, [menuRect, menuText]);
 
-        // Make buttons interactive
-        resumeButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
-        menuButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
-
-        // Button hover effects
-        resumeButton.on('pointerover', () => {
-            resumeButton.setScale(1.1);
-            resumeRect.setFillStyle(0x00ffaa);
-        });
-        resumeButton.on('pointerout', () => {
-            resumeButton.setScale(1);
-            resumeRect.setFillStyle(0x00ff88);
-        });
-
-        menuButton.on('pointerover', () => {
-            menuButton.setScale(1.1);
-            menuRect.setFillStyle(0xff6666);
-        });
-        menuButton.on('pointerout', () => {
-            menuButton.setScale(1);
-            menuRect.setFillStyle(0xff4444);
-        });
-
-        // Button actions
-        resumeButton.on('pointerdown', () => {
-            this.togglePause();
-        });
-
-        menuButton.on('pointerdown', () => {
-            this.scene.start('StartScene');
-        });
-
-        // Also add input handling to the scene for when game is paused
-        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            if (this.scene.isPaused() && this.pauseContainer.visible) {
-                // Check if click is on resume button
-                const resumeBounds = new Phaser.Geom.Rectangle(
-                    screenWidth / 2 - 100, 
-                    screenHeight * 0.6 - 30, 
-                    200, 
-                    60
-                );
-                const menuBounds = new Phaser.Geom.Rectangle(
-                    screenWidth / 2 - 100, 
-                    screenHeight * 0.75 - 30, 
-                    200, 
-                    60
-                );
-                
-                if (resumeBounds.contains(pointer.x, pointer.y)) {
-                    this.togglePause();
-                } else if (menuBounds.contains(pointer.x, pointer.y)) {
-                    this.scene.start('StartScene');
-                }
-            }
-        });
-
-        this.pauseContainer = this.add.container(0, 0, [overlay, pauseText, resumeButton, menuButton]);
-        this.pauseContainer.setScrollFactor(0).setDepth(4000).setVisible(false).setInteractive(); // Higher depth and always interactive
+        this.pauseContainer = this.add.container(0, 0, [overlay, pauseText, resumeText]);
+        this.pauseContainer.setScrollFactor(0).setDepth(4000).setVisible(false);
     }
     
     private togglePause() {
@@ -1125,13 +1140,13 @@ export class GameScene extends Phaser.Scene {
             this.scene.resume();
             this.pauseContainer.setVisible(false);
             if (uiScene && uiScene.scene.isActive()) {
-                uiScene.setInteractive(true);
+                uiScene.scene.setVisible(true);
             }
         } else {
             this.scene.pause();
             this.pauseContainer.setVisible(true);
             if (uiScene && uiScene.scene.isActive()) {
-                uiScene.setInteractive(false);
+                uiScene.scene.setVisible(false);
             }
         }
     }

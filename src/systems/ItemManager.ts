@@ -9,6 +9,17 @@ export class ItemManager {
     }
 
     private initializeItems() {
+        this.items.set('basic_sword', {
+            id: 'basic_sword',
+            name: 'Basic Sword',
+            description: '+10 Attack Damage',
+            texture: 'basic_sword_texture',
+            rarity: 'common',
+            applyEffect: (player: Player) => {
+                player.increaseDamage(10);
+            }
+        });
+
         this.items.set('berserkers_greaves', {
             id: 'berserkers_greaves',
             name: 'Berserker\'s Greaves',

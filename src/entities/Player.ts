@@ -139,6 +139,8 @@ export class Player extends Phaser.GameObjects.Container {
         // Store original cooldowns
         this.originalECooldown = this.eCooldown;
         this.originalRCooldown = this.rCooldown;
+
+        // Player starts with no items
     }
 
     private createHealthBar() {

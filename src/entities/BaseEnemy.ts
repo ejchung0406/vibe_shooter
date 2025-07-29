@@ -79,12 +79,12 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         const gameScene = scene as any;
         const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
         
-        // HP scaling map based on wave number
+        // HP scaling map based on wave number (increased difficulty from wave 3+)
         const hpScalingMap: { [key: number]: number } = {
-            1: 15, 2: 20, 3: 25, 4: 30, 5: 45,
-            6: 180, 7: 240, 8: 300, 9: 450, 10: 600,
-            11: 900, 12: 1350, 13: 1800, 14: 2400, 15: 3300,
-            16: 4500, 17: 6000, 18: 7500, 19: 9000, 20: 12000,
+            1: 15, 2: 20, 3: 50, 4: 80, 5: 120,
+            6: 200, 7: 300, 8: 450, 9: 650, 10: 900,
+            11: 1200, 12: 1600, 13: 2200, 14: 3000, 15: 4000,
+            16: 5500, 17: 7500, 18: 10000, 19: 13000, 20: 17000,
         };
         
         // Get base HP for current wave
@@ -119,7 +119,15 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             // Only follow player if within detection radius
             const detectionRadius = 800; // Increased to ensure spawned enemies can detect player
             if (distance > 0 && distance <= detectionRadius) {
-                const speed = this.moveSpeed * (delta / 1000);
+                // Apply wave-based speed scaling (faster enemies from wave 3+)
+                const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
+                let speedMultiplier = 1.0;
+                if (waveNumber >= 3) {
+                    speedMultiplier = 1.0 + (waveNumber - 2) * 0.15; // +15% speed per wave after wave 2
+                }
+                speedMultiplier = Math.min(speedMultiplier, 3.0); // Cap at 3x speed
+                
+                const speed = this.moveSpeed * speedMultiplier * (delta / 1000);
                 const moveX = (dx / distance) * speed;
                 const moveY = (dy / distance) * speed;
                 
@@ -170,8 +178,19 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     protected onPlayerHit(enemy: any, player: any) {
-        // Deal damage to player
-        player.takeDamage(this.damage);
+        // Deal damage to player with wave-based scaling (stronger from wave 3+)
+        const scene = this.scene as Phaser.Scene;
+        const gameScene = scene as any;
+        const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
+        
+        let damageMultiplier = 1.0;
+        if (waveNumber >= 3) {
+            damageMultiplier = 1.0 + (waveNumber - 2) * 0.25; // +25% damage per wave after wave 2
+        }
+        damageMultiplier = Math.min(damageMultiplier, 4.0); // Cap at 4x damage
+        
+        const scaledDamage = Math.round(this.damage * damageMultiplier);
+        player.takeDamage(scaledDamage);
         
         // Push player away from enemy (with resistance)
         const dx = player.x - enemy.x;

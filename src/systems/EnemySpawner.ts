@@ -6,20 +6,20 @@ import { BossEnemy } from '../entities/BossEnemy';
 export class EnemySpawner {
     private scene: GameScene;
     private spawnTimer: number = 0;
-    private spawnInterval: number = 2000; // 4 seconds (slower spawning)
+    private spawnInterval: number = 1500; // Faster spawning (1.5 seconds)
     private waveNumber: number = 1;
-    private enemiesPerWave: number = 3; // Fewer enemies per wave
+    private enemiesPerWave: number = 5; // More enemies per wave
     private bossSpawnInterval: number = 4; // Boss every 4 waves (4, 8, 12, ...) for debugging
     private bossActive: boolean = false; // Track if boss is currently active
     
     // Wave system based on kills
     private enemiesKilledThisWave: number = 0;
-    private enemiesToKillPerWave: number = 10; // Kill 10 enemies to advance wave
+    private enemiesToKillPerWave: number = 25; // Kill 25 enemies to advance wave
     
     // Difficulty scaling
     private difficultyMultiplier: number = 1.0;
-    private maxEnemiesOnScreen: number = 20;
-    private spawnMultiplier: number = 1;
+    private maxEnemiesOnScreen: number = 35; // More enemies on screen at once
+    private spawnMultiplier: number = 2; // Spawn 2 groups per wave
 
     constructor(scene: GameScene) {
         this.scene = scene;

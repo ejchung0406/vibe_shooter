@@ -79,8 +79,19 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
     }
 
     private onPlayerHit(projectile: any, player: any) {
-        // Deal damage to player
-        player.takeDamage(this.damage);
+        // Deal damage to player with wave-based scaling (stronger from wave 3+)
+        const scene = this.scene as Phaser.Scene;
+        const gameScene = scene as any;
+        const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
+        
+        let damageMultiplier = 1.0;
+        if (waveNumber >= 3) {
+            damageMultiplier = 1.0 + (waveNumber - 2) * 0.25; // +25% damage per wave after wave 2
+        }
+        damageMultiplier = Math.min(damageMultiplier, 4.0); // Cap at 4x damage
+        
+        const scaledDamage = Math.round(this.damage * damageMultiplier);
+        player.takeDamage(scaledDamage);
         
         // Apply knockback to player
         const dx = player.x - this.x;
