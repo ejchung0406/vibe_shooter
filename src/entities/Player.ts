@@ -718,8 +718,8 @@ export class Player extends Phaser.GameObjects.Container {
         // Sort by distance (closest first)
         nearbyEnemies.sort((a, b) => a.distance - b.distance);
         
-        // Take up to 2 closest enemies
-        const targetEnemies = nearbyEnemies.slice(0, 2);
+        // Take all enemies in range for round-robin
+        const targetEnemies = nearbyEnemies;
         
         // Create homing projectiles (5 + player level)
         const playerLevel = gameScene.getPlayerLevel();
@@ -731,11 +731,8 @@ export class Player extends Phaser.GameObjects.Container {
                 const offsetX = Math.cos(angle) * 30;
                 const offsetY = Math.sin(angle) * 30;
                 
-                // Distribute projectiles between targets
-                let targetIndex = 0;
-                if (targetEnemies.length === 2) {
-                    targetIndex = i < Math.floor(projectileCount / 2) ? 0 : 1; // Split evenly between enemies
-                }
+                // Distribute projectiles between targets in a round-robin fashion
+                const targetIndex = i % targetEnemies.length;
                 
                 if (targetEnemies[targetIndex]) {
                     const target = targetEnemies[targetIndex];
