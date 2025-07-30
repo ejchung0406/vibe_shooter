@@ -9,109 +9,119 @@ import { Item, ItemData } from './Item';
 export const SKILL_UNLOCK_LEVELS = {
     Q: 2,
     E: 3,
-    DASH: 5,
+    JUMP: 5,
     R: 9,
     F: 7,
+    DASH: 4,
 };
 
-export class Player extends Phaser.GameObjects.Container {
-    private sprite!: Phaser.GameObjects.Rectangle;
-    private attackTimer: number = 0;
-    private attackCooldown: number = 1000; // milliseconds
-    private velocityX: number = 0;
-    private velocityY: number = 0;
-    private moveSpeed: number = 200;
+export abstract class BasePlayer extends Phaser.GameObjects.Container {
+    protected sprite!: Phaser.GameObjects.Rectangle;
+    protected attackTimer: number = 0;
+    protected attackCooldown: number = 1000; // milliseconds
+    protected velocityX: number = 0;
+    protected velocityY: number = 0;
+    protected moveSpeed: number = 200;
 
     // Stat rework
-    private baseAttackDamage: number = 10;
-    private bonusAttackDamage: number = 0;
-    private attackDamageMultiplier: number = 1.0;
-    private attackDamage: number = 10;
+    protected baseAttackDamage: number = 10;
+    protected bonusAttackDamage: number = 0;
+    protected attackDamageMultiplier: number = 1.0;
+    protected attackDamage: number = 10;
 
-    private armor: number = 5; // Default armor value
-    private projectileCount: number = 1;
-    private piercing: boolean = false;
-    private projectileSpeed: number = 500;
-    private isAttacking: boolean = false;
-    private attackPauseTimer: number = 0;
-    private health: number = 100;
-    private maxHealth: number = 100;
-    private isInvulnerable: boolean = false;
-    private invulnerabilityDuration: number = 1000; // 1 second
-    private invulnerabilityTimer: number = 0;
-    private healthBar!: Phaser.GameObjects.Rectangle;
-    private healthBarBg!: Phaser.GameObjects.Rectangle;
-    private isBeingKnockedBack: boolean = false;
-    private explosiveDamageMultiplier: number = 1;
-    private explosiveBossDamageMultiplier: number = 1;
+    protected armor: number = 5; // Default armor value
+    protected projectileCount: number = 1;
+    protected piercing: boolean = false;
+    protected projectileSpeed: number = 500;
+    protected isAttacking: boolean = false;
+    protected attackPauseTimer: number = 0;
+    protected health: number = 100;
+    protected maxHealth: number = 100;
+    protected baseMaxHealth: number = 100;
+    protected isInvulnerable: boolean = false;
+    protected invulnerabilityDuration: number = 1000; // 1 second
+    protected invulnerabilityTimer: number = 0;
+    protected healthBar!: Phaser.GameObjects.Rectangle;
+    protected healthBarBg!: Phaser.GameObjects.Rectangle;
+    protected isBeingKnockedBack: boolean = false;
+    protected isMelee: boolean = false;
+    protected explosiveDamageMultiplier: number = 1;
+    protected explosiveBossDamageMultiplier: number = 1;
 
     // Auto heal
-    private healOverTime: boolean = false;
-    private healOverTimeTimer: number = 0;
-    private healOverTimeAmount: number = 2;
-    private healOverTimeInterval: number = 1000; // 1 second
+    protected healOverTime: boolean = false;
+    protected healOverTimeTimer: number = 0;
+    protected healOverTimeAmount: number = 2;
+    protected healOverTimeInterval: number = 1000; // 1 second
     
     // Critical strike properties
-    private criticalStrikeChance: number = 0.15;
-    private criticalStrikeDamage: number = 1.5; // 150% damage
-    private xpMultiplier: number = 1;
-    private qDamageToNormalMultiplier: number = 1;
-    private eSkillHeals: boolean = false;
-    private lifeSteal: number = 0;
-    private hasAegis: boolean = false;
-    private healthRegen: number = 0;
-    private healthRegenTimer: number = 0;
+    protected criticalStrikeChance: number = 0.15;
+    protected criticalStrikeDamage: number = 1.5; // 150% damage
+    protected xpMultiplier: number = 1;
+    protected qDamageToNormalMultiplier: number = 1;
+    protected eSkillHeals: boolean = false;
+    protected lifeSteal: number = 0;
+    protected hasAegis: boolean = false;
+    protected healthRegen: number = 0;
+    protected healthRegenTimer: number = 0;
 
     // Attack properties
-    private comboCounter: number = 0;
-    private comboThreshold: number = 3;
-    private hasSpreadAttack: boolean = false; // Spread attack upgrade
-    private hasComboMaster: boolean = false; // Combo master upgrade
-    private hasAdvancedCombo: boolean = false; // Advanced combo upgrade
-    private shotCounter: number = 0; // Track shots for combo
-    private qSkillHomingMultiplier: number = 1;
-    private rProjectileMultiplier: number = 1;
+    protected comboCounter: number = 0;
+    protected comboThreshold: number = 3;
+    protected hasSpreadAttack: boolean = false; // Spread attack upgrade
+    protected hasComboMaster: boolean = false; // Combo master upgrade
+    protected hasAdvancedCombo: boolean = false; // Advanced combo upgrade
+    protected shotCounter: number = 0; // Track shots for combo
+    protected qSkillHomingMultiplier: number = 1;
+    protected rProjectileMultiplier: number = 1;
 
     // Skills
-    private qSkillUnlocked: boolean = false;
-    private eSkillUnlocked: boolean = false;
-    private dashSkillUnlocked: boolean = false; // New dash skill
-    private rSkillUnlocked: boolean = false;
-    private fSkillUnlocked: boolean = false;
-    private qCooldown: number = 3000; // 3 seconds
-    private eCooldown: number = 8000; // 8 seconds
-    private readonly originalECooldown: number;
-    private dashCooldown: number = 2000; // 2 seconds
-    private rCooldown: number = 10000; // 10 seconds
-    private readonly originalRCooldown: number;
-    private fCooldown: number = 40000; // 40 seconds
-    private qCooldownTimer: number = 0;
-    private eCooldownTimer: number = 0;
-    private dashCooldownTimer: number = 0; // New dash cooldown timer
-    private rCooldownTimer: number = 0;
-    private fCooldownTimer: number = 0;
-    
-    // Shield
-    private shieldActive: boolean = false;
-    private shieldDuration: number = 2000; // 2 seconds
-    private shieldTimer: number = 0;
-    private shieldSprite: Phaser.GameObjects.Arc | null = null;
-    private shieldAbsorbs: boolean = false;
+    protected qSkillUnlocked: boolean = false;
+    protected eSkillUnlocked: boolean = false;
+    protected jumpSkillUnlocked: boolean = false;
+    protected rSkillUnlocked: boolean = false;
+    protected fSkillUnlocked: boolean = false;
+    protected qCooldown: number = 3000; // 3 seconds
+    protected eCooldown: number = 8000; // 8 seconds
+    protected readonly originalECooldown: number;
+    protected jumpCooldown: number = 2000; // 2 seconds
+    protected rCooldown: number = 10000; // 10 seconds
+    protected readonly originalRCooldown: number;
+    protected fCooldown: number = 40000; // 40 seconds
+    protected readonly originalFCooldown: number;
+    protected qCooldownTimer: number = 0;
+    protected eCooldownTimer: number = 0;
+    protected jumpCooldownTimer: number = 0;
+    protected rCooldownTimer: number = 0;
+    protected fCooldownTimer: number = 0;
     
     // Dash properties
-    private isDashing: boolean = false;
-    private dashDistance: number = 250; // Reduced from 500 to half
-    private dashSpeed: number = 2000; // Very fast speed
-    private dashDuration: number = 150; // 0.25 seconds
-    private dashTimer: number = 0;
+    protected dashSkillUnlocked: boolean = false;
+    protected dashCooldown: number = 3000; // 3 seconds
+    protected dashCooldownTimer: number = 0;
+    protected isDashing: boolean = false;
+    protected dashDuration: number = 200; // 200ms dash duration
+    protected dashTimer: number = 0;
+    protected dashSpeed: number = 1600; // Dash speed
     
-    // Dash visual effects
-    private dashTrail: Phaser.GameObjects.Graphics | null = null;
-    private dashTrailPoints: { x: number, y: number, alpha: number }[] = [];
-    private maxTrailPoints: number = 15;
-    private knockbackResistance: number = 0.03; // Reduce knockback to 3% of original
-    private items: ItemData[] = [];
-    private maxItems: number = 12;
+    // Dash trail properties
+    protected dashTrail: Phaser.GameObjects.Graphics | null = null;
+    protected dashTrailPoints: Array<{x: number, y: number, alpha: number}> = [];
+    protected maxTrailPoints: number = 15;
+    
+    // Shield
+    protected shieldActive: boolean = false;
+    protected shieldDuration: number = 2000; // 2 seconds
+    protected shieldTimer: number = 0;
+    protected shieldSprite: Phaser.GameObjects.Arc | null = null;
+    protected shieldAbsorbs: boolean = false;
+    
+    // Jump properties
+    protected isJumping: boolean = false;
+    protected knockbackResistance: number = 1; // Reduce knockback to 100% of original
+    protected items: ItemData[] = [];
+    protected maxItems: number = 12;
+    protected canMove: boolean = true;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -149,6 +159,11 @@ export class Player extends Phaser.GameObjects.Container {
         // Store original cooldowns
         this.originalECooldown = this.eCooldown;
         this.originalRCooldown = this.rCooldown;
+        this.originalFCooldown = this.fCooldown;
+
+        // Ensure maxHealth and health are set based on baseMaxHealth after all initializations
+        this.maxHealth = this.baseMaxHealth;
+        this.health = this.maxHealth;
 
         // Player starts with no items
     }
@@ -161,6 +176,9 @@ export class Player extends Phaser.GameObjects.Container {
         this.healthBar = this.scene.add.rectangle(0, -20, barWidth, barHeight, 0x00ff00);
         
         this.add([this.healthBarBg, this.healthBar]);
+
+        // Initial update to reflect correct health values
+        this.updateHealthBar();
     }
 
     private updateHealthBar() {
@@ -223,6 +241,9 @@ export class Player extends Phaser.GameObjects.Container {
         // Update dash movement
         this.updateDash(delta);
         
+        // Update dash trail effect
+        this.updateTrailEffect(delta);
+        
         // Movement is now handled by physics velocity
         
         // Keep player within camera bounds
@@ -279,92 +300,16 @@ export class Player extends Phaser.GameObjects.Container {
 
     public setVelocity(x: number, y: number) {
         const body = this.body as Phaser.Physics.Arcade.Body;
-        if (body && !this.isBeingKnockedBack && !this.isDashing) {
+        if (body && !this.isBeingKnockedBack && !this.isDashing && this.canMove) {
             body.setVelocity(x * this.moveSpeed, y * this.moveSpeed);
         }
     }
 
-    public attack() {
-        if (this.isAttacking) return; // Prevent multiple attacks during pause
-        
-        this.isAttacking = true;
-        this.attackPauseTimer = 0;
-        
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
-        // Get mouse position for shooting direction (world coordinates)
-        const mousePointer = scene.input.activePointer;
-        const mouseX = mousePointer.worldX;
-        const mouseY = mousePointer.worldY;
-        
-        // Check if mouse is over an enemy for homing
-        const enemies = gameScene.getEnemies().getChildren();
-        let isHoming = false;
-        
-        enemies.forEach((enemy: any) => {
-            const dx = mouseX - enemy.x;
-            const dy = mouseY - enemy.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // If mouse is within enemy bounds (assuming enemy size is roughly 40x40)
-            if (distance < 30) {
-                isHoming = true;
-            }
-        });
-        
-        // Calculate angle to mouse
-        const dx = mouseX - this.x;
-        const dy = mouseY - this.y;
-        const angle = Math.atan2(dy, dx);
-        
-        if (this.projectileCount === 1) {
-            // Single projectile - check for combo
-            this.shotCounter++;
-            const isComboShot = this.hasAdvancedCombo ? this.shotCounter % 2 === 0 : (this.hasComboMaster && this.shotCounter % 3 === 0);
-            
-            if (isComboShot) {
-                // Create explosive projectile
-                const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
-                const projectile = new ExplosiveProjectile(
-                    scene,
-                    this.x,
-                    this.y,
-                    damage, // Double damage
-                    this.projectileSpeed,
-                    angle,
-                    this.explosiveDamageMultiplier,
-                    this.explosiveBossDamageMultiplier,
-                    this.piercing,
-                    isCritical
-                );
-                gameScene.getProjectiles().add(projectile);
-            } else {
-                // Regular projectile
-                const { damage, isCritical } = this.calculateDamage(this.attackDamage);
-                const projectile = new Projectile(
-                    scene,
-                    this.x,
-                    this.y,
-                    damage,
-                    this.projectileSpeed,
-                    angle,
-                    this.piercing,
-                    isHoming, // Enable homing if mouse is over enemy
-                    isCritical
-                );
-                gameScene.getProjectiles().add(projectile);
-            }
-        } else {
-            // Multi-projectile attacks - increment counter for combo tracking
-            this.shotCounter++;
-            const isComboShot = this.hasAdvancedCombo ? this.shotCounter % 2 === 0 : (this.hasComboMaster && this.shotCounter % 3 === 0);
-            
-            this.performBurstAttack(scene, gameScene, angle, isComboShot, isHoming);
-        }
-        
-        // Combo system disabled for now
-    }
+    public abstract attack(): void;
+
+    public abstract useESkill(): void;
+
+    public abstract useFSkill(): void;
 
     private performSpreadAttack(scene: Phaser.Scene, gameScene: any, baseAngle: number, isComboShot: boolean = false, isHoming: boolean = false) {
         for (let i = 0; i < this.projectileCount; i++) {
@@ -488,6 +433,10 @@ export class Player extends Phaser.GameObjects.Container {
             this.eSkillUnlocked = true;
             gameScene.showSkillUnlockMessage('E Skill Unlocked!');
         }
+        if (level >= SKILL_UNLOCK_LEVELS.JUMP && !this.jumpSkillUnlocked) {
+            this.jumpSkillUnlocked = true;
+            gameScene.showSkillUnlockMessage('Jump Skill Unlocked!');
+        }
         if (level >= SKILL_UNLOCK_LEVELS.DASH && !this.dashSkillUnlocked) {
             this.dashSkillUnlocked = true;
             gameScene.showSkillUnlockMessage('Dash Skill Unlocked!');
@@ -502,176 +451,9 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
     
-    public useDashSkill() {
-        if (!this.dashSkillUnlocked || this.dashCooldownTimer > 0 || this.isDashing) return;
-        
-        this.dashCooldownTimer = this.dashCooldown;
-        this.isDashing = true;
-        this.dashTimer = 0;
-        
-        // Create trail graphics if not exists
-        this.createDashTrail();
-        
-        const scene = this.scene as Phaser.Scene;
-        
-        // Get mouse position for dash direction (world coordinates)
-        const mousePointer = scene.input.activePointer;
-        const mouseX = mousePointer.worldX;
-        const mouseY = mousePointer.worldY;
-        
-        // Calculate direction to mouse
-        const dx = mouseX - this.x;
-        const dy = mouseY - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > 0) {
-            // Normalize direction and apply dash speed
-            const dashVelX = (dx / distance) * this.dashSpeed;
-            const dashVelY = (dy / distance) * this.dashSpeed;
-            
-            // Apply dash velocity
-            const body = this.body as Phaser.Physics.Arcade.Body;
-            if (body) {
-                body.setVelocity(dashVelX, dashVelY);
-            }
-        }
-    }
     
-    private createDashTrail() {
-        if (!this.dashTrail) {
-            this.dashTrail = this.scene.add.graphics();
-            this.dashTrail.setDepth(500); // Above most objects but below UI
-        }
-        this.dashTrailPoints = []; // Reset trail points
-    }
+
     
-    private addTrailPoint(x: number, y: number) {
-        this.dashTrailPoints.push({ x, y, alpha: 1.0 });
-        
-        // Limit trail length
-        if (this.dashTrailPoints.length > this.maxTrailPoints) {
-            this.dashTrailPoints.shift();
-        }
-    }
-    
-    private updateTrailEffect(delta: number) {
-        if (!this.dashTrail || this.dashTrailPoints.length === 0) return;
-        
-        // Clear previous trail
-        this.dashTrail.clear();
-        
-        // Fade out trail points
-        for (let i = 0; i < this.dashTrailPoints.length; i++) {
-            const point = this.dashTrailPoints[i];
-            point.alpha -= delta / 300; // Fade over 300ms
-            
-            if (point.alpha <= 0) {
-                this.dashTrailPoints.splice(i, 1);
-                i--;
-                continue;
-            }
-            
-            // Draw trail segment
-            const size = 8 + (point.alpha * 12); // Size decreases as alpha decreases
-            const color = Phaser.Display.Color.GetColor(
-                Math.floor(173 * point.alpha), // Light blue R
-                Math.floor(216 * point.alpha), // Light blue G  
-                Math.floor(230 * point.alpha)  // Light blue B
-            );
-            
-            this.dashTrail.fillStyle(color, point.alpha * 0.8);
-            this.dashTrail.fillCircle(point.x, point.y, size);
-            
-            // Add glow effect
-            this.dashTrail.fillStyle(0x87CEEB, point.alpha * 0.3); // Light blue glow
-            this.dashTrail.fillCircle(point.x, point.y, size * 1.5);
-        }
-        
-        // Clean up trail if no more points
-        if (this.dashTrailPoints.length === 0 && this.dashTrail) {
-            this.dashTrail.destroy();
-            this.dashTrail = null;
-        }
-    }
-
-    private updateSkillCooldowns(delta: number) {
-        if (this.qCooldownTimer > 0) {
-            this.qCooldownTimer -= delta;
-        }
-        
-        if (this.eCooldownTimer > 0) {
-            this.eCooldownTimer -= delta;
-        }
-        
-        if (this.dashCooldownTimer > 0) {
-            this.dashCooldownTimer -= delta;
-        }
-        if (this.rCooldownTimer > 0) {
-            this.rCooldownTimer -= delta;
-        }
-        if (this.fCooldownTimer > 0) {
-            this.fCooldownTimer -= delta;
-        }
-    }
-    
-    private updateDash(delta: number) {
-        if (this.isDashing) {
-            this.dashTimer += delta;
-            
-            // Add current position to trail
-            this.addTrailPoint(this.x, this.y);
-            
-            if (this.dashTimer >= this.dashDuration) {
-                // End dash
-                this.isDashing = false;
-                this.dashTimer = 0;
-                
-                // Reset velocity to normal
-                const body = this.body as Phaser.Physics.Arcade.Body;
-                if (body) {
-                    body.setVelocity(0, 0);
-                }
-            }
-        }
-        
-        // Update trail effect
-        this.updateTrailEffect(delta);
-    }
-
-    public useRSkill() {
-        if (!this.rSkillUnlocked || this.rCooldownTimer > 0) return;
-
-        this.rCooldownTimer = this.rCooldown;
-
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-
-        const mousePointer = scene.input.activePointer;
-        const mouseX = mousePointer.worldX;
-        const mouseY = mousePointer.worldY;
-
-        const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
-
-        for (let i = 0; i < 7 * this.rProjectileMultiplier; i++) {
-            scene.time.delayedCall(i * 50 / this.rProjectileMultiplier, () => {
-                const { damage, isCritical } = this.calculateDamage(this.attackDamage * 1.5);
-                const projectile = new ExplosiveProjectile(
-                    scene,
-                    this.x,
-                    this.y,
-                    damage,
-                    this.projectileSpeed * 1.5,
-                    angle,
-                    this.explosiveDamageMultiplier,
-                    this.explosiveBossDamageMultiplier,
-                    false,
-                    isCritical
-                );
-
-                gameScene.getProjectiles().add(projectile);
-            });
-        }
-    }
 
     private updateShield(delta: number) {
         if (this.shieldActive) {
@@ -682,98 +464,25 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
-    public useQSkill() {
-        if (!this.qSkillUnlocked || this.qCooldownTimer > 0) return;
-        
-        this.qCooldownTimer = this.qCooldown;
-        
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
-        // Find nearby enemies and sort by distance
-        const enemies = gameScene.getEnemies().getChildren();
-        const nearbyEnemies: any[] = [];
-        
-        enemies.forEach((enemy: any) => {
-            const dx = enemy.x - this.x;
-            const dy = enemy.y - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= 900) { // 900px radius (3x bigger)
-                nearbyEnemies.push({ 
-                    enemy, 
-                    distance,
-                    fixedX: enemy.x, // Fix target position at this moment
-                    fixedY: enemy.y
-                });
-            }
-        });
-        
-        // Don't use Q skill if no enemies in range
-        if (nearbyEnemies.length === 0) {
-            this.qCooldownTimer = 0; // Reset cooldown so it can be tried again
-            return;
-        }
-        
-        // Sort by distance (closest first)
-        nearbyEnemies.sort((a, b) => a.distance - b.distance);
-        
-        // Take all enemies in range for round-robin
-        const targetEnemies = nearbyEnemies;
-        
-        // Create homing projectiles (5 + player level)
-        const playerLevel = gameScene.getPlayerLevel();
-        const projectileCount = ( 5 + playerLevel ) * this.qSkillHomingMultiplier;
-        
-        for (let i = 0; i < projectileCount; i++) {
-            this.scene.time.delayedCall(i * 50 / this.qSkillHomingMultiplier, () => {
-                const angle = (i / projectileCount) * Math.PI * 2;
-                const offsetX = Math.cos(angle) * 30;
-                const offsetY = Math.sin(angle) * 30;
-                
-                // Distribute projectiles between targets in a round-robin fashion
-                const targetIndex = i % targetEnemies.length;
-                
-                if (targetEnemies[targetIndex]) {
-                    const target = targetEnemies[targetIndex];
-                    let damage = this.attackDamage * 0.6;
-                    if (!target.enemy.isBossEnemy()) {
-                        damage *= this.qDamageToNormalMultiplier;
-                    }
-                    const { damage: finalDamage, isCritical } = this.calculateDamage(damage);
-                    
-                    const projectile = new QProjectile(
-                        scene,
-                        this.x + offsetX,
-                        this.y + offsetY,
-                        finalDamage,
-                        target.fixedX,
-                        target.fixedY,
-                        isCritical
-                    );
-                    
-                    gameScene.getProjectiles().add(projectile);
-                }
-            });
-        }
-    }
+    
 
     public applyKnockback(dx: number, dy: number, force: number) {
-        if (this.isDashing) return;
+        if (this.isJumping || this.isDashing) return; // Disable knockback during jump or dash
     
         const body = this.body as Phaser.Physics.Arcade.Body;
         if (!body) return;
     
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (distance > 0) {
-            const knockbackForce = force * this.getKnockbackResistance();
+            // Significantly reduce knockback for ranged players too
+            const knockbackForce = force * this.getKnockbackResistance(); // 20% of original
             const knockbackVx = (dx / distance) * knockbackForce;
             const knockbackVy = (dy / distance) * knockbackForce;
             
             body.setVelocity(knockbackVx, knockbackVy);
     
             this.isBeingKnockedBack = true;
-            this.scene.time.delayedCall(200, () => {
+            this.scene.time.delayedCall(100, () => { // Reduced duration from 200ms to 100ms
                 this.isBeingKnockedBack = false;
                 if(this.active) {
                     body.setVelocity(0, 0);
@@ -802,6 +511,47 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
+    private updateSkillCooldowns(delta: number) {
+        // Update all skill cooldown timers
+        if (this.qCooldownTimer > 0) {
+            this.qCooldownTimer = Math.max(0, this.qCooldownTimer - delta);
+        }
+        if (this.eCooldownTimer > 0) {
+            this.eCooldownTimer = Math.max(0, this.eCooldownTimer - delta);
+        }
+        if (this.jumpCooldownTimer > 0) {
+            this.jumpCooldownTimer = Math.max(0, this.jumpCooldownTimer - delta);
+        }
+        if (this.rCooldownTimer > 0) {
+            this.rCooldownTimer = Math.max(0, this.rCooldownTimer - delta);
+        }
+        if (this.fCooldownTimer > 0) {
+            this.fCooldownTimer = Math.max(0, this.fCooldownTimer - delta);
+        }
+        if (this.dashCooldownTimer > 0) {
+            this.dashCooldownTimer = Math.max(0, this.dashCooldownTimer - delta);
+        }
+    }
+
+    private updateDash(delta: number) {
+        if (this.isDashing) {
+            this.dashTimer += delta;
+            
+            // Add trail point while dashing
+            this.addTrailPoint(this.x, this.y);
+            
+            if (this.dashTimer >= this.dashDuration) {
+                this.isDashing = false;
+                this.dashTimer = 0;
+                // Stop dash movement
+                const body = this.body as Phaser.Physics.Arcade.Body;
+                if (body) {
+                    body.setVelocity(0, 0);
+                }
+            }
+        }
+    }
+
     private constrainToCamera() {
         const camera = this.scene.cameras.main;
         const body = this.body as Phaser.Physics.Arcade.Body;
@@ -820,18 +570,9 @@ export class Player extends Phaser.GameObjects.Container {
         this.y = Phaser.Math.Clamp(this.y, minY, maxY);
     }
 
-    public useESkill() {
-        if (!this.eSkillUnlocked || this.eCooldownTimer > 0 || this.shieldActive) return;
-        
-        this.eCooldownTimer = this.eCooldown;
-        this.activateShield();
+    public abstract useESkill(): void;
 
-        if (this.eSkillHeals) {
-            this.heal(this.maxHealth * 0.1);
-        }
-    }
-
-    private activateShield() {
+    protected activateShield() {
         this.shieldActive = true;
         this.shieldTimer = 0;
         if (this.shieldSprite) {
@@ -949,7 +690,7 @@ export class Player extends Phaser.GameObjects.Container {
         });
     }
 
-    private calculateDamage(baseDamage: number): { damage: number, isCritical: boolean } {
+    protected calculateDamage(baseDamage: number): { damage: number, isCritical: boolean } {
         let finalDamage = baseDamage;
         let isCritical = false;
         if (Math.random() < this.criticalStrikeChance) {
@@ -1035,7 +776,7 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     public removeItem(item: ItemData) {
-        const index = this.items.findIndex(i => i.id === item.id);
+        const index = this.items.indexOf(item);
         if (index > -1) {
             this.items.splice(index, 1);
             this.recalculateStats();
@@ -1048,7 +789,7 @@ export class Player extends Phaser.GameObjects.Container {
         this.attackDamageMultiplier = 1.0;
         this.projectileSpeed = 500;
         this.criticalStrikeDamage = 1.5;
-        this.maxHealth = 100;
+        this.maxHealth = this.baseMaxHealth;
         this.healthRegen = 0;
         this.lifeSteal = 0;
         this.hasAegis = false;
@@ -1279,6 +1020,14 @@ export class Player extends Phaser.GameObjects.Container {
         return this.fCooldown;
     }
 
+    public setFCooldown(cooldown: number) {
+        this.fCooldown = cooldown;
+    }
+
+    public getOriginalFCooldown(): number {
+        return this.originalFCooldown;
+    }
+
     public setRProjectileMultiplier(multiplier: number) {
         this.rProjectileMultiplier = multiplier;
     }
@@ -1293,6 +1042,107 @@ export class Player extends Phaser.GameObjects.Container {
         const gameScene = this.scene as GameScene;
         const pet = new Pet(gameScene, this.x, this.y, this, 20000);
         gameScene.addPet(pet);
+    }
+
+    public useDashSkill() {
+        if (!this.dashSkillUnlocked || this.dashCooldownTimer > 0 || this.isDashing) return;
+        
+        this.dashCooldownTimer = this.dashCooldown;
+        this.isDashing = true;
+        this.dashTimer = 0;
+        
+        // Create trail graphics if not exists
+        this.createDashTrail();
+        
+        const scene = this.scene as Phaser.Scene;
+        
+        // Get mouse position for dash direction (world coordinates)
+        const mousePointer = scene.input.activePointer;
+        const mouseX = mousePointer.worldX;
+        const mouseY = mousePointer.worldY;
+        
+        // Calculate direction to mouse
+        const dx = mouseX - this.x;
+        const dy = mouseY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+            // Normalize direction and apply dash speed
+            const dashVelX = (dx / distance) * this.dashSpeed;
+            const dashVelY = (dy / distance) * this.dashSpeed;
+            
+            // Apply dash velocity
+            const body = this.body as Phaser.Physics.Arcade.Body;
+            if (body) {
+                body.setVelocity(dashVelX, dashVelY);
+            }
+        }
+    }
+
+    protected createDashTrail() {
+        if (!this.dashTrail) {
+            this.dashTrail = this.scene.add.graphics();
+            this.dashTrail.setDepth(500); // Above most objects but below UI
+        }
+        this.dashTrailPoints = []; // Reset trail points
+    }
+    
+    protected addTrailPoint(x: number, y: number) {
+        this.dashTrailPoints.push({ x, y, alpha: 1.0 });
+        
+        // Limit trail length
+        if (this.dashTrailPoints.length > this.maxTrailPoints) {
+            this.dashTrailPoints.shift();
+        }
+    }
+    
+    protected updateTrailEffect(delta: number) {
+        if (!this.dashTrail || this.dashTrailPoints.length === 0) return;
+        
+        // Clear previous trail
+        this.dashTrail.clear();
+        
+        // Fade out trail points
+        for (let i = 0; i < this.dashTrailPoints.length; i++) {
+            const point = this.dashTrailPoints[i];
+            point.alpha -= delta / 300; // Fade over 300ms
+            
+            if (point.alpha <= 0) {
+                this.dashTrailPoints.splice(i, 1);
+                i--;
+                continue;
+            }
+            
+            // Draw trail segment with default light blue color
+            const size = 8 + (point.alpha * 12); // Size decreases as alpha decreases
+            const trailColor = this.getDashTrailColor(point.alpha);
+            
+            this.dashTrail.fillStyle(trailColor.main, point.alpha * 0.8);
+            this.dashTrail.fillCircle(point.x, point.y, size);
+            
+            // Add glow effect
+            this.dashTrail.fillStyle(trailColor.glow, point.alpha * 0.3);
+            this.dashTrail.fillCircle(point.x, point.y, size * 1.5);
+        }
+        
+        // Clean up trail if no more points
+        if (this.dashTrailPoints.length === 0 && this.dashTrail) {
+            this.dashTrail.destroy();
+            this.dashTrail = null;
+        }
+    }
+    
+    protected getDashTrailColor(alpha: number): {main: number, glow: number} {
+        // Default light blue color for ranged characters
+        const mainColor = Phaser.Display.Color.GetColor(
+            Math.floor(173 * alpha), // Light blue R
+            Math.floor(216 * alpha), // Light blue G  
+            Math.floor(230 * alpha)  // Light blue B
+        );
+        return {
+            main: mainColor,
+            glow: 0x87CEEB // Light blue glow
+        };
     }
 
     public getFCooldownTimer() {

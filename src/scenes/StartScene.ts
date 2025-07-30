@@ -55,7 +55,7 @@ export class StartScene extends Phaser.Scene {
 
         // Start game on click
         startButton.on('pointerdown', () => {
-            this.scene.start('GameScene');
+            this.scene.start('CharacterSelectionScene');
         });
 
         // Controls section

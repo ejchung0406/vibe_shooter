@@ -14,6 +14,12 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected xpMultiplier: number = 1;
     private highlight!: Phaser.GameObjects.Graphics;
     private lifetime: number = 0;
+    private isBleeding: boolean = false;
+    private bleedTimer: number = 0;
+    private bleedDamage: number = 0;
+    private bleedTickTimer: number = 0;
+    private bleedTickInterval: number = 500; // 0.5 seconds
+    private bleedEffect: Phaser.GameObjects.Graphics | null = null;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -105,6 +111,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         // Custom update logic for subclasses
         this.customUpdate(time, delta);
         this.checkDespawn(delta);
+        this.updateBleed(delta);
     }
 
     protected moveTowardsPlayer(delta: number) {
@@ -364,9 +371,74 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         }
     }
 
-    // Abstract methods for subclasses
-    protected abstract customUpdate(time: number, delta: number): void;
-    protected abstract getEnemyColor(): number;
+    public applyBleed(duration: number, damagePerSecond: number) {
+        this.isBleeding = true;
+        this.bleedTimer = duration;
+        this.bleedDamage = damagePerSecond;
+        this.bleedTickTimer = 0; // Reset tick timer
+        
+        // Create bleeding visual effect
+        this.createBleedEffect();
+    }
+
+    private updateBleed(delta: number) {
+        if (this.isBleeding) {
+            this.bleedTimer -= delta;
+            this.bleedTickTimer += delta;
+            
+            // Apply damage every 0.5 seconds
+            if (this.bleedTickTimer >= this.bleedTickInterval) {
+                this.takeDamage(this.bleedDamage * (this.bleedTickInterval / 1000));
+                this.bleedTickTimer = 0;
+            }
+            
+            if (this.bleedTimer <= 0) {
+                this.isBleeding = false;
+                this.removeBleedEffect();
+            }
+        }
+    }
+
+    private createBleedEffect() {
+        if (!this.bleedEffect) {
+            this.bleedEffect = this.scene.add.graphics();
+            this.bleedEffect.setDepth(this.depth + 1);
+            this.add(this.bleedEffect);
+        }
+        
+        // Animate the bleeding effect
+        this.animateBleedEffect();
+    }
+
+    private animateBleedEffect() {
+        if (!this.bleedEffect || !this.isBleeding) return;
+        
+        this.bleedEffect.clear();
+        
+        // Create red particles around the enemy
+        const numParticles = 3;
+        for (let i = 0; i < numParticles; i++) {
+            const angle = (i / numParticles) * Math.PI * 2;
+            const radius = 15 + Math.sin(this.lifetime * 0.01) * 3; // Pulsing effect
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            
+            this.bleedEffect.fillStyle(0xff0000, 0.7);
+            this.bleedEffect.fillCircle(x, y, 2);
+        }
+        
+        // Continue animation if still bleeding
+        if (this.isBleeding) {
+            this.scene.time.delayedCall(100, () => this.animateBleedEffect());
+        }
+    }
+
+    private removeBleedEffect() {
+        if (this.bleedEffect) {
+            this.bleedEffect.destroy();
+            this.bleedEffect = null;
+        }
+    }
 
     // Getters
     public getHealth() {

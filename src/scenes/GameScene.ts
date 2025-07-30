@@ -1,18 +1,22 @@
 import Phaser from 'phaser';
-import { Player } from '../entities/Player';
+import { BasePlayer } from '../entities/BasePlayer';
+import { RangedPlayer } from '../entities/RangedPlayer';
+import { MeleePlayer } from '../entities/MeleePlayer';
 import { TankEnemy } from '../entities/TankEnemy';
 import { RangedEnemy } from '../entities/RangedEnemy';
 import { Projectile } from '../entities/Projectile';
 import { UpgradeManager } from '../systems/UpgradeManager';
 import { EnemySpawner } from '../systems/EnemySpawner';
-import { SKILL_UNLOCK_LEVELS } from '../entities/Player';
+import { SKILL_UNLOCK_LEVELS } from '../entities/BasePlayer';
 import { Pet } from '../entities/Pet';
 import { ItemManager } from '../systems/ItemManager';
 import { Item, ItemData } from '../entities/Item';
 import { SkillManager, SkillData } from '../systems/SkillManager';
 
+const BASE_MAX_HEALTH_BAR_WIDTH = 300; // The width of the health bar for a player with 100 max health
+
 export class GameScene extends Phaser.Scene {
-    private player!: Player;
+    private player!: BasePlayer;
     private enemies!: Phaser.GameObjects.Group;
     private projectiles!: Phaser.GameObjects.Group;
     private enemyProjectiles!: Phaser.GameObjects.Group;
@@ -55,6 +59,9 @@ export class GameScene extends Phaser.Scene {
     private projectileCountText!: Phaser.GameObjects.Text;
     private critChanceText!: Phaser.GameObjects.Text;
     private critDamageText!: Phaser.GameObjects.Text;
+    private qSkillRangeText!: Phaser.GameObjects.Text;
+    private qSkillRepeatText!: Phaser.GameObjects.Text;
+    private meleeAttackRangeText!: Phaser.GameObjects.Text;
     
     // Wave counter UI
     private waveText!: Phaser.GameObjects.Text;
@@ -65,13 +72,16 @@ export class GameScene extends Phaser.Scene {
         super({ key: 'GameScene' });
     }
 
-    init() {
+    init(data: { character: string }) {
         // Reset game state
         this.gameTime = 0;
         this.playerLevel = 1;
         this.playerXP = 0;
         this.xpToNextLevel = 100;
         this.bossesDefeated = 0;
+
+        // Set character type
+        this.character = data.character || 'ranged';
     }
 
     create() {
@@ -100,8 +110,13 @@ export class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.enemies, this.enemies, this.handleEnemyCollision, undefined, this);
         
         // Create player at center of the world (0,0)
-        this.player = new Player(this, 0, 0);
+        if (this.character === 'melee') {
+            this.player = new MeleePlayer(this, 0, 0);
+        } else {
+            this.player = new RangedPlayer(this, 0, 0);
+        }
         this.add.existing(this.player);
+        this.player.recalculateStats(); // Ensure stats are correctly applied before UI setup
         
         this.physics.add.overlap(this.player, this.items, this.handleItemPickup, undefined, this);
 
@@ -110,6 +125,7 @@ export class GameScene extends Phaser.Scene {
         
         // Setup UI
         this.setupUI();
+        this.updateUI();
         
         // Start enemy spawning
         this.enemySpawner.startSpawning();
@@ -209,7 +225,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     private spawnRandomItem() {
-        const itemData = this.itemManager.getRandomItem();
+        let itemData = this.itemManager.getRandomItem();
+        if (itemData && itemData.id === 'aegis_of_the_immortal') {
+            if (this.isAegisOnFieldOrInInventory()) {
+                return;
+            }
+        }
+
         if (itemData) {
             const player = this.getPlayer();
             const spawnX = player.x + Phaser.Math.Between(-100, 100);
@@ -217,6 +239,12 @@ export class GameScene extends Phaser.Scene {
             const item = new Item(this, spawnX, spawnY, itemData);
             this.addItem(item);
         }
+    }
+
+    private isAegisOnFieldOrInInventory(): boolean {
+        const playerAegis = this.player.getItems().some(item => item.id === 'aegis_of_the_immortal');
+        const fieldAegis = this.items.getChildren().some(item => (item as Item).getItemData().id === 'aegis_of_the_immortal');
+        return playerAegis || fieldAegis;
     }
 
     private handleItemPickup(player: any, item: any) {
@@ -297,7 +325,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     private showSkillTooltip(skillId: string) {
-        const skillData = this.skillManager.getSkillData(skillId);
+        // Determine character type
+        const characterType = (this.player instanceof MeleePlayer) ? 'melee' : 'ranged';
+        
+        // Get character-specific skill data
+        const skillData = this.skillManager.getSkillDataForCharacter(skillId, characterType);
+        
         if (skillData) {
             let text = skillData.description;
             if (skillData.damageMultiplier) {
@@ -360,7 +393,7 @@ export class GameScene extends Phaser.Scene {
         
         this.healthBarBg = this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0).setDepth(1000);
         this.healthBar = this.add.rectangle(centerX, bottomY, 300, 30, 0x00ff00).setScrollFactor(0).setDepth(1001);
-        this.healthText = this.add.text(centerX, bottomY, '100/100', {
+        this.healthText = this.add.text(centerX, bottomY, `${Math.round(this.player.getHealth())}/${Math.round(this.player.getMaxHealth())}`, {
             fontSize: '22px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -954,17 +987,15 @@ export class GameScene extends Phaser.Scene {
         const screenHeight = this.scale.height;
         
         // Position stats UI below and to the left of the level text
-        const levelTextX = screenWidth / 2 - 220;
-        const levelTextY = screenHeight - 60;
-        const statsX = levelTextX - 420; 
-        const statsY = levelTextY - 170; 
+        const statsX = 40; 
+        const statsY = screenHeight / 2 - 115; 
         /* (0, 0) is the top left corner of the screen */
 
         // Create stats container positioned relative to level text
         this.statsContainer = this.add.container(statsX, statsY).setScrollFactor(0).setDepth(1000);
         
-        // Background panel (made taller for all stats including projectiles)
-        const statsBg = this.add.rectangle(0, 0, 220, 230, 0x000000, 0.7);
+        // Background panel (made taller for all stats including new ones)
+        const statsBg = this.add.rectangle(0, 0, 220, 310, 0x000000, 0.7);
         statsBg.setStrokeStyle(2, 0x333333);
         statsBg.setOrigin(0, 0);
         // Remove problematic setInteractive call
@@ -1027,12 +1058,33 @@ export class GameScene extends Phaser.Scene {
             color: '#ffffff'
         });
 
+        // Q Skill Range (for melee players)
+        this.qSkillRangeText = this.add.text(10, 215, 'Q Range: 200', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+
+        // Q Skill Repeat/Projectiles (for ranged players)
+        this.qSkillRepeatText = this.add.text(10, 240, 'Q Projectiles: 1x', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+
+        // Melee Attack Range (for melee players)
+        this.meleeAttackRangeText = this.add.text(10, 265, 'Attack Range: 200', {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff'
+        });
+
         // Add all elements to container
-        this.statsContainer.add([statsBg, statsTitle, this.damageText, this.attackSpeedText, this.movementSpeedText, this.armorText, this.projectileCountText, this.critChanceText, this.critDamageText]);
+        this.statsContainer.add([statsBg, statsTitle, this.damageText, this.attackSpeedText, this.movementSpeedText, this.armorText, this.projectileCountText, this.critChanceText, this.critDamageText, this.qSkillRangeText, this.qSkillRepeatText, this.meleeAttackRangeText]);
     }
 
     private updateCharacterStats() {
-        if (!this.player || !this.damageText || !this.attackSpeedText || !this.movementSpeedText || !this.armorText || !this.projectileCountText) return;
+        if (!this.player || !this.damageText || !this.attackSpeedText || !this.movementSpeedText || !this.armorText || !this.projectileCountText || !this.qSkillRangeText || !this.qSkillRepeatText || !this.meleeAttackRangeText) return;
         
         // Get player stats
         const damage = Math.round(this.player.getAttackDamage());
@@ -1040,7 +1092,7 @@ export class GameScene extends Phaser.Scene {
         const moveSpeed = this.player.getMoveSpeed();
         const armor = this.player.getArmor();
         const damageReduction = this.player.getDamageReduction().toFixed(1);
-        const projectileCount = this.player.getProjectileCount();
+        const projectileCount = (this.player instanceof MeleePlayer) ? (this.player as MeleePlayer).getMeleeAttackCount() : this.player.getProjectileCount();
         const critChance = (this.player.getCriticalStrikeChance() * 100).toFixed(0);
         const critDamage = (this.player.getCriticalStrikeDamage() * 100).toFixed(0);
         
@@ -1052,6 +1104,27 @@ export class GameScene extends Phaser.Scene {
         this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
         this.critChanceText.setText(`Crit Chance: ${critChance}%`);
         this.critDamageText.setText(`Crit Damage: ${critDamage}%`);
+
+        // Update character-specific stats
+        if (this.player instanceof MeleePlayer) {
+            const meleePlayer = this.player as MeleePlayer;
+            const qSkillRadius = Math.round(meleePlayer.getQSkillRadius());
+            const attackRange = Math.round(meleePlayer.getAttackRange());
+            
+            this.qSkillRangeText.setText(`Q Range: ${qSkillRadius}`);
+            this.qSkillRangeText.setVisible(true);
+            this.meleeAttackRangeText.setText(`Attack Range: ${attackRange}`);
+            this.meleeAttackRangeText.setVisible(true);
+            this.qSkillRepeatText.setVisible(false);
+        } else if (this.player instanceof RangedPlayer) {
+            const rangedPlayer = this.player as RangedPlayer;
+            const qProjectileMultiplier = rangedPlayer.getQSkillHomingMultiplier();
+            
+            this.qSkillRepeatText.setText(`Q Projectiles: ${qProjectileMultiplier}x`);
+            this.qSkillRepeatText.setVisible(true);
+            this.qSkillRangeText.setVisible(false);
+            this.meleeAttackRangeText.setVisible(false);
+        }
     }
 
     public addPet(pet: Pet) {

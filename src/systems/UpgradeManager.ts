@@ -1,4 +1,7 @@
 import { GameScene } from '../scenes/GameScene';
+import { RangedPlayer } from '../entities/RangedPlayer';
+import { MeleePlayer } from '../entities/MeleePlayer';
+
 
 export interface Upgrade {
     id: string;
@@ -7,6 +10,7 @@ export interface Upgrade {
     rarity: 'common' | 'rare' | 'epic' | 'legendary';
     dependencies?: string[];
     requiredSkill?: 'Q' | 'E' | 'R' | 'F' | 'DASH';
+    character?: 'ranged' | 'melee';
     effect: (player: any) => void;
 }
 
@@ -29,8 +33,13 @@ export class UpgradeManager {
                 description: "Add 1 more projectile",
                 rarity: "common",
                 effect: (player: any) => {
-                    player.projectileCount++;
-                }
+                    if (player.increaseMeleeAttackCount) {
+                        player.increaseMeleeAttackCount(1);
+                    } else {
+                        player.projectileCount++;
+                    }
+                },
+                character: 'ranged'
             },
             {
                 id: "triple_shot",
@@ -38,8 +47,13 @@ export class UpgradeManager {
                 description: "Add 2 more projectiles",
                 rarity: "rare",
                 effect: (player: any) => {
-                    player.projectileCount += 2;
-                }
+                    if (player.increaseMeleeAttackCount) {
+                        player.increaseMeleeAttackCount(2);
+                    } else {
+                        player.projectileCount += 2;
+                    }
+                },
+                character: 'ranged'
             },
             {
                 id: "quad_shot",
@@ -47,8 +61,13 @@ export class UpgradeManager {
                 description: "Add 3 more projectiles",
                 rarity: "epic",
                 effect: (player: any) => {
-                    player.projectileCount += 3;
-                }
+                    if (player.increaseMeleeAttackCount) {
+                        player.increaseMeleeAttackCount(3);
+                    } else {
+                        player.projectileCount += 3;
+                    }
+                },
+                character: 'ranged'
             },
             {
                 id: "combo_master",
@@ -57,7 +76,8 @@ export class UpgradeManager {
                 rarity: "epic",
                 effect: (player: any) => {
                     player.enableComboMaster();
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "advanced_combo",
@@ -67,7 +87,8 @@ export class UpgradeManager {
                 dependencies: ["combo_master"],
                 effect: (player: any) => {
                     player.enableAdvancedCombo();
-                }
+                },
+                character: 'ranged'
             },
             
             // Stat improvements
@@ -135,7 +156,8 @@ export class UpgradeManager {
                 rarity: "epic",
                 effect: (player: any) => {
                     player.piercing = true;
-                }
+                },
+                character: 'ranged'
             },
 
             // Q Skill improvements
@@ -147,7 +169,8 @@ export class UpgradeManager {
                 requiredSkill: 'Q',
                 effect: (player: any) => {
                     player.setQSkillHomingMultiplier(2);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "triple_q",
@@ -159,7 +182,8 @@ export class UpgradeManager {
                 effect: (player: any) => {
                     const currentMultiplier = player.getQSkillHomingMultiplier();
                     player.setQSkillHomingMultiplier(currentMultiplier * 3);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "triple_q_2",
@@ -171,7 +195,8 @@ export class UpgradeManager {
                 effect: (player: any) => {
                     const currentMultiplier = player.getQSkillHomingMultiplier();
                     player.setQSkillHomingMultiplier(currentMultiplier * 3);    
-                }
+                },
+                character: 'ranged'
             },
 
 
@@ -347,7 +372,55 @@ export class UpgradeManager {
                 requiredSkill: 'Q',
                 effect: (player: any) => {
                     player.setQDamageToNormalMultiplier(2);
-                }
+                },
+                character: 'ranged'
+            },
+            // Melee Q skill upgrades
+            {
+                id: "melee_q_damage_1",
+                name: "Melee Q Damage 1",
+                description: "Increase Melee Q skill damage by 20%",
+                rarity: "common",
+                requiredSkill: 'Q',
+                effect: (player: any) => {
+                    player.increaseQSkillDamage(0.2);
+                },
+                character: 'melee'
+            },
+            {
+                id: "melee_q_damage_2",
+                name: "Melee Q Damage 2",
+                description: "Increase Melee Q skill damage by 40%",
+                rarity: "rare",
+                dependencies: ["melee_q_damage_1"],
+                requiredSkill: 'Q',
+                effect: (player: any) => {
+                    player.increaseQSkillDamage(0.4);
+                },
+                character: 'melee'
+            },
+            {
+                id: "melee_q_range_1",
+                name: "Melee Q Range 1",
+                description: "Increase Melee Q skill radius by 30%",
+                rarity: "common",
+                requiredSkill: 'Q',
+                effect: (player: any) => {
+                    player.increaseQSkillRadius(0.3);
+                },
+                character: 'melee'
+            },
+            {
+                id: "melee_q_range_2",
+                name: "Melee Q Range 2",
+                description: "Increase Melee Q skill radius by 50%",
+                rarity: "rare",
+                dependencies: ["melee_q_range_1"],
+                requiredSkill: 'Q',
+                effect: (player: any) => {
+                    player.increaseQSkillRadius(0.5);
+                },
+                character: 'melee'
             },
             {
                 id: "spawn_increase",
@@ -467,7 +540,8 @@ export class UpgradeManager {
                 requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRProjectileMultiplier(1.5);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "r_projectile_2",
@@ -478,7 +552,8 @@ export class UpgradeManager {
                 requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRProjectileMultiplier(2);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "r_cooldown_1",
@@ -511,25 +586,101 @@ export class UpgradeManager {
                 effect: (player: any) => {
                     player.setRCooldown(player.getOriginalRCooldown() * 0.4);
                 }
+            },
+
+            // F skill upgrades
+            {
+                id: "f_cooldown_1",
+                name: "F Cooldown 1",
+                description: "Reduce F skill cooldown by 25%",
+                rarity: "rare",
+                requiredSkill: 'F',
+                effect: (player: any) => {
+                    player.setFCooldown(player.getOriginalFCooldown() * 0.75);
+                }
+            },
+            {
+                id: "f_cooldown_2",
+                name: "F Cooldown 2",
+                description: "Reduce F skill cooldown by 25%",
+                rarity: "epic",
+                dependencies: ["f_cooldown_1"],
+                requiredSkill: 'F',
+                effect: (player: any) => {
+                    player.setFCooldown(player.getOriginalFCooldown() * 0.5);
+                }
+            },
+
+            // Melee-specific upgrades
+            {
+                id: "life_steal_1",
+                name: "Life Steal",
+                description: "Heal for 5% of damage dealt",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.setLifeSteal(0.05);
+                },
+                character: 'melee'
+            },
+            {
+                id: "life_steal_2",
+                name: "Life Steal 2",
+                description: "Heal for 10% of damage dealt",
+                rarity: "rare",
+                dependencies: ["life_steal_1"],
+                effect: (player: any) => {
+                    player.setLifeSteal(0.1);
+                },
+                character: 'melee'
+            },
+            {
+                id: "attack_range_1",
+                name: "Attack Range",
+                description: "Increase attack range by 40%",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.increaseAttackRange(0.4);
+                },
+                character: 'melee'
+            },
+            {
+                id: "attack_range_2",
+                name: "Attack Range 2",
+                description: "Increase attack range by 60%",
+                rarity: "rare",
+                dependencies: ["attack_range_1"],
+                effect: (player: any) => {
+                    player.increaseAttackRange(0.6);
+                },
+                character: 'melee'
             }
         ];
     }
 
     public getRandomUpgrades(count: number): Upgrade[] {
         const player = this.scene.getPlayer();
+        const characterType = player instanceof RangedPlayer ? 'ranged' : 'melee';
+
         const available = this.availableUpgrades.filter(upgrade => {
             if (upgrade.dependencies && !upgrade.dependencies.every(dep => this.appliedUpgrades.some(applied => applied.id === dep))) {
                 return false;
             }
             if (upgrade.requiredSkill) {
+                let skillUnlocked = false;
                 switch (upgrade.requiredSkill) {
-                    case 'Q': return player.isQSkillUnlocked();
-                    case 'E': return player.isESkillUnlocked();
-                    case 'R': return player.isRSkillUnlocked();
-                    case 'F': return player.isFSkillUnlocked();
-                    case 'DASH': return player.isDashSkillUnlocked();
-                    default: return true;
+                    case 'Q': skillUnlocked = player.isQSkillUnlocked(); break;
+                    case 'E': skillUnlocked = player.isESkillUnlocked(); break;
+                    case 'R': skillUnlocked = player.isRSkillUnlocked(); break;
+                    case 'F': skillUnlocked = player.isFSkillUnlocked(); break;
+                    case 'DASH': skillUnlocked = player.isDashSkillUnlocked(); break;
+                    default: skillUnlocked = true;
                 }
+                if (!skillUnlocked) {
+                    return false;
+                }
+            }
+            if (upgrade.character && upgrade.character !== characterType) {
+                return false;
             }
             return true;
         });
@@ -573,8 +724,18 @@ export class UpgradeManager {
     }
 
     public reapplyUpgrades(player: any) {
+        const characterType = player instanceof RangedPlayer ? 'ranged' : 'melee';
+        
+        // Reset character-specific multipliers before reapplying upgrades
+        if (player instanceof MeleePlayer) {
+            player.resetMeleeMultipliers();
+        }
+        
         this.appliedUpgrades.forEach(upgrade => {
-            upgrade.effect(player);
+            // Only reapply upgrades that are compatible with current character type
+            if (!upgrade.character || upgrade.character === characterType) {
+                upgrade.effect(player);
+            }
         });
     }
 
@@ -588,6 +749,10 @@ export class UpgradeManager {
             
             console.log(`Applied upgrade: ${upgrade.name}`);
 
+            // Apply the upgrade effect FIRST
+            upgrade.effect(player);
+            
+            // Then recalculate stats to reflect the changes
             player.recalculateStats();
         }
     }
