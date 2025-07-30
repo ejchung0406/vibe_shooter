@@ -581,7 +581,6 @@ export class UpgradeManager {
     public applyUpgrade(upgrade: Upgrade) {
         const player = this.scene.getPlayer();
         if (player) {
-            upgrade.effect(player);
             this.appliedUpgrades.push(upgrade);
             
             // Remove from available upgrades to prevent duplicates

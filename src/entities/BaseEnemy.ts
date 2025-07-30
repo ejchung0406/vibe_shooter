@@ -320,7 +320,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             }
         }
 
-        const finalXP = Math.floor((this.xpValue * this.xpMultiplier) * waveMultiplier);
+        const player = gameScene.getPlayer();
+        const playerXPMultiplier = player ? player.getXPMultiplier() : 1;
+        const finalXP = Math.floor((this.xpValue * this.xpMultiplier * playerXPMultiplier) * waveMultiplier);
 
         // Give XP to player
         gameScene.addXP(finalXP);
