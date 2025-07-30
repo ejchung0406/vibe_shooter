@@ -11,6 +11,7 @@ export class MeleePlayer extends BasePlayer {
     protected qSkillRadius: number = 200;
     protected baseQSkillRadius: number = 200; // Store the base value
     protected qSkillRadiusMultiplier: number = 1; // Track the multiplier
+    protected rSkillBleedingDamage: number = 0.03; // Default 3% of max health per second
     private dashHitEnemies: Set<any> = new Set(); // Track enemies hit during current dash
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -106,7 +107,7 @@ export class MeleePlayer extends BasePlayer {
                     if (enemy.isBossEnemy && enemy.isBossEnemy()) {
                         // R skill bleeding: 5% of max health per second for 10 seconds
                         // Q skill bleeding: 2% of max health per second for 10 seconds (40% of R skill)
-                        enemy.applyBleed(10000, enemy.getMaxHealth() * 0.02);
+                        enemy.applyBleed(10000, enemy.getMaxHealth() * 0.01);
                     }
                 }
             }
@@ -147,7 +148,7 @@ export class MeleePlayer extends BasePlayer {
             if (distance < radius) {
                 const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                 enemy.takeDamage(damage, isCritical);
-                enemy.applyBleed(10000, enemy.getMaxHealth() * 0.05); // Bleed for 5% of max health per second for 10 seconds
+                enemy.applyBleed(10000, enemy.getMaxHealth() * this.rSkillBleedingDamage); // Use configurable bleeding damage
             }
         });
     }
@@ -187,8 +188,17 @@ export class MeleePlayer extends BasePlayer {
     }
 
     public increaseQSkillDamage(amount: number) {
-        // Use additive scaling for damage multiplier
+        // Use additive scaling for damage multiplier (deprecated - use increaseQSkillDamageMultiplier)
         this.qSkillDamageMultiplier += amount;
+    }
+
+    public increaseQSkillDamageMultiplier(amount: number) {
+        // Use multiplicative scaling for damage multiplier
+        this.qSkillDamageMultiplier *= (1 + amount);
+    }
+
+    public setRSkillBleedingDamage(damage: number) {
+        this.rSkillBleedingDamage = damage;
     }
 
     public increaseQSkillRadius(amount: number) {
@@ -229,6 +239,7 @@ export class MeleePlayer extends BasePlayer {
         this.attackRangeMultiplier = 1;
         this.qSkillRadiusMultiplier = 1;
         this.qSkillDamageMultiplier = 1;
+        this.rSkillBleedingDamage = 0.03; // Reset to default 3%
         console.log(`resetMeleeMultipliers: after reset - attackRangeMultiplier=${this.attackRangeMultiplier}, qSkillRadiusMultiplier=${this.qSkillRadiusMultiplier}`);
     }
 

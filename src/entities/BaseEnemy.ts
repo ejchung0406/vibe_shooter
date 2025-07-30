@@ -345,6 +345,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         // Create death effect
         this.createDeathEffect();
         
+        // Clean up bleeding effect
+        this.removeBleedEffect();
+        
         // Destroy enemy
         this.destroy();
     }
@@ -372,6 +375,9 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     public applyBleed(duration: number, damagePerSecond: number) {
+        // Safety check to ensure enemy is still active
+        if (!this.active || !this.scene) return;
+        
         this.isBleeding = true;
         this.bleedTimer = duration;
         this.bleedDamage = damagePerSecond;
@@ -400,10 +406,18 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     private createBleedEffect() {
-        if (!this.bleedEffect) {
+        if (!this.bleedEffect && this.active && this.scene) {
             this.bleedEffect = this.scene.add.graphics();
             this.bleedEffect.setDepth(this.depth + 1);
-            this.add(this.bleedEffect);
+            
+            // Safety check to ensure we can add to the container
+            if (this.add && typeof this.add === 'function') {
+                this.add(this.bleedEffect);
+            } else {
+                // Fallback: position the effect manually if container add fails
+                this.bleedEffect.x = this.x;
+                this.bleedEffect.y = this.y;
+            }
         }
         
         // Animate the bleeding effect
@@ -411,9 +425,15 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     private animateBleedEffect() {
-        if (!this.bleedEffect || !this.isBleeding) return;
+        if (!this.bleedEffect || !this.isBleeding || !this.active || !this.scene) return;
         
         this.bleedEffect.clear();
+        
+        // Update position if not added to container (fallback positioning)
+        if (this.bleedEffect.parentContainer !== this) {
+            this.bleedEffect.x = this.x;
+            this.bleedEffect.y = this.y;
+        }
         
         // Create red particles around the enemy
         const numParticles = 3;
@@ -427,9 +447,13 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             this.bleedEffect.fillCircle(x, y, 2);
         }
         
-        // Continue animation if still bleeding
-        if (this.isBleeding) {
-            this.scene.time.delayedCall(100, () => this.animateBleedEffect());
+        // Continue animation if still bleeding and scene is available
+        if (this.isBleeding && this.active && this.scene && this.scene.time) {
+            this.scene.time.delayedCall(100, () => {
+                if (this.active && this.scene) {
+                    this.animateBleedEffect();
+                }
+            });
         }
     }
 

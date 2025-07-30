@@ -383,7 +383,7 @@ export class UpgradeManager {
                 rarity: "common",
                 requiredSkill: 'Q',
                 effect: (player: any) => {
-                    player.increaseQSkillDamage(0.2);
+                    player.increaseQSkillDamageMultiplier(0.2);
                 },
                 character: 'melee'
             },
@@ -395,7 +395,19 @@ export class UpgradeManager {
                 dependencies: ["melee_q_damage_1"],
                 requiredSkill: 'Q',
                 effect: (player: any) => {
-                    player.increaseQSkillDamage(0.4);
+                    player.increaseQSkillDamageMultiplier(0.4);
+                },
+                character: 'melee'
+            },
+            {
+                id: "melee_q_damage_3",
+                name: "Melee Q Damage 3",
+                description: "Increase Melee Q skill damage by 80%",
+                rarity: "legendary",
+                dependencies: ["melee_q_damage_2"],
+                requiredSkill: 'Q',
+                effect: (player: any) => {
+                    player.increaseQSkillDamageMultiplier(0.8);
                 },
                 character: 'melee'
             },
@@ -419,6 +431,30 @@ export class UpgradeManager {
                 requiredSkill: 'Q',
                 effect: (player: any) => {
                     player.increaseQSkillRadius(0.5);
+                },
+                character: 'melee'
+            },
+            // Melee R skill bleeding upgrades
+            {
+                id: "melee_r_bleeding_1",
+                name: "Enhanced Bleeding",
+                description: "Increase R skill bleeding damage from 3% to 5% of max health per second",
+                rarity: "rare",
+                requiredSkill: 'R',
+                effect: (player: any) => {
+                    player.setRSkillBleedingDamage(0.05);
+                },
+                character: 'melee'
+            },
+            {
+                id: "melee_r_bleeding_2",
+                name: "Potent Bleeding",
+                description: "Increase R skill bleeding damage from 5% to 7% of max health per second",
+                rarity: "epic",
+                dependencies: ["melee_r_bleeding_1"],
+                requiredSkill: 'R',
+                effect: (player: any) => {
+                    player.setRSkillBleedingDamage(0.07);
                 },
                 character: 'melee'
             },
