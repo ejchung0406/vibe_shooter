@@ -468,8 +468,8 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     
 
     public applyKnockback(dx: number, dy: number, force: number) {
-        if (this.isJumping || this.isDashing) return; // Disable knockback during jump or dash
-    
+        if (this.isDashing) return; // Disable knockback during dash
+
         const body = this.body as Phaser.Physics.Arcade.Body;
         if (!body) return;
     

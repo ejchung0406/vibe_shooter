@@ -107,7 +107,10 @@ export class Pet extends Phaser.GameObjects.Container {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
         
         const attackDamage = this.owner.getAttackDamage();
-        const projectileCount = Math.max(this.owner.getProjectileCount(),this.owner.getMeleeAttackCount());
+        var projectileCount = this.owner.getProjectileCount()
+        if (this.owner.getMeleeAttackCount) {
+            projectileCount = Math.max(projectileCount, this.owner.getMeleeAttackCount());
+        }
         const projectileSpeed = this.owner.getProjectileSpeed();
 
         const { damage, isCritical } = this.calculateDamage(attackDamage);
