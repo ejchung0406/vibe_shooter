@@ -11,7 +11,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected healthBarBg!: Phaser.GameObjects.Rectangle;
     protected baseHealthMultiplier: number = 1;
     protected isBoss: boolean = false;
-    protected xpMultiplier: number = 1;
+    protected xpBossMultiplier: number = 1;
     private highlight!: Phaser.GameObjects.Graphics;
     private lifetime: number = 0;
     private isBleeding: boolean = false;
@@ -328,8 +328,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         }
 
         const player = gameScene.getPlayer();
-        const playerXPMultiplier = player ? player.getXPMultiplier() : 1;
-        const finalXP = Math.floor((this.xpValue * this.xpMultiplier * playerXPMultiplier) * waveMultiplier);
+        const finalXP = Math.floor((this.xpValue * this.xpBossMultiplier) * waveMultiplier);
 
         // Give XP to player
         gameScene.addXP(finalXP);

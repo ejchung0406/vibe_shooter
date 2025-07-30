@@ -18,7 +18,7 @@ export class BossEnemy extends BaseEnemy {
         this.baseHealthMultiplier = 50; // 50x health
         this.moveSpeed = 60; // Slower than tank
         this.damage = 25; // High damage
-        this.xpMultiplier = 30; // Lots of XP
+        this.xpBossMultiplier = 30; // Lots of XP
         this.isBoss = true;
         
         // Make boss 10x bigger
