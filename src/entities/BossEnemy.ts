@@ -126,10 +126,15 @@ export class BossEnemy extends BaseEnemy {
         const gameScene = this.scene as any;
         const itemManager = gameScene.getItemManager();
         if (itemManager) {
-            const itemData = itemManager.getRandomBossItem();
-            if (itemData) {
-                const item = new Item(this.scene, this.x, this.y, itemData);
-                gameScene.addItem(item);
+            for (let i = 0; i < 3; i++) {
+                const itemData = itemManager.getRandomBossItem();
+                if (itemData) {
+                    const angle = (i / 3) * 2 * Math.PI;
+                    const spawnX = this.x + Math.cos(angle) * 50;
+                    const spawnY = this.y + Math.sin(angle) * 50;
+                    const item = new Item(this.scene, spawnX, spawnY, itemData);
+                    gameScene.addItem(item);
+                }
             }
         }
     }

@@ -6,6 +6,7 @@ export interface Upgrade {
     description: string;
     rarity: 'common' | 'rare' | 'epic' | 'legendary';
     dependencies?: string[];
+    requiredSkill?: 'Q' | 'E' | 'R' | 'F' | 'DASH';
     effect: (player: any) => void;
 }
 
@@ -143,6 +144,7 @@ export class UpgradeManager {
                 name: "Double Homing",
                 description: "Double the number of projectiles from Q",
                 rarity: "rare",
+                requiredSkill: 'Q',
                 effect: (player: any) => {
                     player.setQSkillHomingMultiplier(2);
                 }
@@ -153,6 +155,7 @@ export class UpgradeManager {
                 description: "Triple the number of projectiles from Q",
                 rarity: "epic",
                 dependencies: ["double_q"],
+                requiredSkill: 'Q',
                 effect: (player: any) => {
                     const currentMultiplier = player.getQSkillHomingMultiplier();
                     player.setQSkillHomingMultiplier(currentMultiplier * 3);
@@ -164,6 +167,7 @@ export class UpgradeManager {
                 description: "Triple the number of projectiles from Q",
                 rarity: "epic",
                 dependencies: ["triple_q"],
+                requiredSkill: 'Q',
                 effect: (player: any) => {
                     const currentMultiplier = player.getQSkillHomingMultiplier();
                     player.setQSkillHomingMultiplier(currentMultiplier * 3);    
@@ -340,6 +344,7 @@ export class UpgradeManager {
                 name: "Q Damage Boost",
                 description: "Q skill deals 2x damage to normal enemies",
                 rarity: "epic",
+                requiredSkill: 'Q',
                 effect: (player: any) => {
                     player.setQDamageToNormalMultiplier(2);
                 }
@@ -361,6 +366,7 @@ export class UpgradeManager {
                 name: "Shield Heal",
                 description: "E skill heals 10% of max health when used",
                 rarity: "epic",
+                requiredSkill: 'E',
                 effect: (player: any) => {
                     player.setESkillHeals(true);
                 }
@@ -413,6 +419,7 @@ export class UpgradeManager {
                 name: "E Cooldown 1",
                 description: "Reduce E skill cooldown by 20%",
                 rarity: "common",
+                requiredSkill: 'E',
                 effect: (player: any) => {
                     player.setECooldown(player.getOriginalECooldown() * 0.8);
                 }
@@ -423,6 +430,7 @@ export class UpgradeManager {
                 description: "Reduce E skill cooldown by 35%",
                 rarity: "rare",
                 dependencies: ["e_cooldown_1"],
+                requiredSkill: 'E',
                 effect: (player: any) => {
                     player.setECooldown(player.getOriginalECooldown() * 0.65);
                 }
@@ -433,6 +441,7 @@ export class UpgradeManager {
                 description: "Reduce E skill cooldown by 60%",
                 rarity: "epic",
                 dependencies: ["e_cooldown_2"],
+                requiredSkill: 'E',
                 effect: (player: any) => {
                     player.setECooldown(player.getOriginalECooldown() * 0.4);
                 }
@@ -443,6 +452,7 @@ export class UpgradeManager {
                 description: "E skill absorbs 50% of damage taken as health",
                 rarity: "epic",
                 dependencies: ["e_cooldown_2"],
+                requiredSkill: 'E',
                 effect: (player: any) => {
                     player.setShieldAbsorbs(true);
                 }
@@ -454,6 +464,7 @@ export class UpgradeManager {
                 name: "R Skill Projectile 1",
                 description: "Increase R skill projectiles by 1.5x",
                 rarity: "rare",
+                requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRProjectileMultiplier(1.5);
                 }
@@ -464,6 +475,7 @@ export class UpgradeManager {
                 description: "Increase R skill projectiles by 2x",
                 rarity: "epic",
                 dependencies: ["r_projectile_1"],
+                requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRProjectileMultiplier(2);
                 }
@@ -473,6 +485,7 @@ export class UpgradeManager {
                 name: "R Cooldown 1",
                 description: "Reduce R skill cooldown by 20%",
                 rarity: "common",
+                requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRCooldown(player.getOriginalRCooldown() * 0.8);
                 }
@@ -483,6 +496,7 @@ export class UpgradeManager {
                 description: "Reduce R skill cooldown by 35%",
                 rarity: "rare",
                 dependencies: ["r_cooldown_1"],
+                requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRCooldown(player.getOriginalRCooldown() * 0.65);
                 }
@@ -493,6 +507,7 @@ export class UpgradeManager {
                 description: "Reduce R skill cooldown by 60%",
                 rarity: "epic",
                 dependencies: ["r_cooldown_2"],
+                requiredSkill: 'R',
                 effect: (player: any) => {
                     player.setRCooldown(player.getOriginalRCooldown() * 0.4);
                 }
@@ -501,13 +516,22 @@ export class UpgradeManager {
     }
 
     public getRandomUpgrades(count: number): Upgrade[] {
+        const player = this.scene.getPlayer();
         const available = this.availableUpgrades.filter(upgrade => {
-            if (!upgrade.dependencies) {
-                return true;
+            if (upgrade.dependencies && !upgrade.dependencies.every(dep => this.appliedUpgrades.some(applied => applied.id === dep))) {
+                return false;
             }
-            return upgrade.dependencies.every(dep =>
-                this.appliedUpgrades.some(applied => applied.id === dep)
-            );
+            if (upgrade.requiredSkill) {
+                switch (upgrade.requiredSkill) {
+                    case 'Q': return player.isQSkillUnlocked();
+                    case 'E': return player.isESkillUnlocked();
+                    case 'R': return player.isRSkillUnlocked();
+                    case 'F': return player.isFSkillUnlocked();
+                    case 'DASH': return player.isDashSkillUnlocked();
+                    default: return true;
+                }
+            }
+            return true;
         });
 
         const weightedUpgrades = available.flatMap(upgrade => {

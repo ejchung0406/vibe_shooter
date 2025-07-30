@@ -374,7 +374,7 @@ export class GameScene extends Phaser.Scene {
         const xpPercent = this.playerXP / this.xpToNextLevel;
         const maxXpBarWidth = this.scale.width - 40;
         this.xpBar.width = maxXpBarWidth * xpPercent;
-        this.xpText.setText(`XP: ${this.playerXP}/${this.xpToNextLevel}`);
+        this.xpText.setText(`XP: ${Math.floor(this.playerXP)}/${this.xpToNextLevel}`);
         
         const minutes = Math.floor(this.gameTime / 60000);
         const seconds = Math.floor((this.gameTime % 60000) / 1000);

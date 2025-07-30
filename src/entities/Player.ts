@@ -110,7 +110,7 @@ export class Player extends Phaser.GameObjects.Container {
     private maxTrailPoints: number = 15;
     private knockbackResistance: number = 0.3; // Reduce knockback to 30% of original
     private items: ItemData[] = [];
-    private maxItems: number = 6;
+    private maxItems: number = 12;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
