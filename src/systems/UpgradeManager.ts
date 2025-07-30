@@ -572,6 +572,12 @@ export class UpgradeManager {
         }
     }
 
+    public reapplyUpgrades(player: any) {
+        this.appliedUpgrades.forEach(upgrade => {
+            upgrade.effect(player);
+        });
+    }
+
     public applyUpgrade(upgrade: Upgrade) {
         const player = this.scene.getPlayer();
         if (player) {
@@ -582,6 +588,8 @@ export class UpgradeManager {
             this.availableUpgrades = this.availableUpgrades.filter(u => u.id !== upgrade.id);
             
             console.log(`Applied upgrade: ${upgrade.name}`);
+
+            player.recalculateStats();
         }
     }
 

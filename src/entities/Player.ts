@@ -1033,7 +1033,7 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
-    private recalculateStats() {
+    public recalculateStats() {
         // Reset bonuses to their base values
         this.bonusAttackDamage = 0;
         this.attackDamageMultiplier = 1.0;
@@ -1053,6 +1053,13 @@ export class Player extends Phaser.GameObjects.Container {
                 item.applyEffect(this);
             }
         });
+
+        // Re-apply upgrades
+        const gameScene = this.scene as GameScene;
+        const upgradeManager = gameScene.getUpgradeManager();
+        if (upgradeManager) {
+            upgradeManager.reapplyUpgrades(this);
+        }
 
         // Final calculation
         this.attackDamage = (this.baseAttackDamage + this.bonusAttackDamage) * this.attackDamageMultiplier;

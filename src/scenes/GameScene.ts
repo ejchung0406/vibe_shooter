@@ -713,6 +713,10 @@ export class GameScene extends Phaser.Scene {
         this.items.add(item);
     }
 
+    public getUpgradeManager(): UpgradeManager {
+        return this.upgradeManager;
+    }
+
     public getGameTime() {
         return this.gameTime;
     }
