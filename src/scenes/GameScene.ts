@@ -59,6 +59,7 @@ export class GameScene extends Phaser.Scene {
     // Wave counter UI
     private waveText!: Phaser.GameObjects.Text;
     private pauseContainer!: Phaser.GameObjects.Container;
+    private bossIndicator!: Phaser.GameObjects.Image;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -122,6 +123,7 @@ export class GameScene extends Phaser.Scene {
         
         // Setup input
         this.setupInput();
+        this.createBossIndicator();
         
         // Debug logging removed
 
@@ -185,6 +187,7 @@ export class GameScene extends Phaser.Scene {
         
         // Check for level up
         this.checkLevelUp();
+        this.updateBossIndicator();
     }
 
     public onBossDefeated() {
@@ -403,7 +406,7 @@ export class GameScene extends Phaser.Scene {
         if (player && player.isAlive()) {
             const healthPercent = player.getHealth() / player.getMaxHealth();
             this.healthBar.width = 300 * healthPercent;
-            this.healthText.setText(`${player.getHealth()}/${player.getMaxHealth()}`);
+            this.healthText.setText(`${Math.round(player.getHealth())}/${Math.round(player.getMaxHealth())}`);
             
             // Change color based on health
             if (healthPercent > 0.6) {
@@ -632,7 +635,7 @@ export class GameScene extends Phaser.Scene {
     private levelUp() {
         this.playerLevel++;
         this.playerXP -= this.xpToNextLevel;
-        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.2); // Increase XP requirement
+        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5); // Increase XP requirement
         
         // --- Level Up Bonuses ---
         // 1. Fixed armor gain
@@ -1200,6 +1203,89 @@ export class GameScene extends Phaser.Scene {
             if (uiScene && uiScene.scene.isActive()) {
                 uiScene.scene.setVisible(false);
             }
+        }
+    }
+
+    private createBossIndicator() {
+        // Create a simple triangle texture for the boss indicator
+        const graphics = this.add.graphics();
+        graphics.fillStyle(0xff0000, 1);
+        graphics.beginPath();
+        graphics.moveTo(0, -15);
+        graphics.lineTo(15, 15);
+        graphics.lineTo(-15, 15);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.generateTexture('boss_indicator', 30, 30);
+        graphics.destroy();
+
+        this.bossIndicator = this.add.image(this.scale.width / 2, 50, 'boss_indicator')
+            .setScrollFactor(0)
+            .setDepth(5000)
+            .setVisible(false);
+    }
+
+    private updateBossIndicator() {
+        const boss = this.enemies.getChildren().find(enemy => (enemy as any).isBossEnemy());
+
+        if (boss) {
+            const bossEnemy = boss as any;
+            const camera = this.cameras.main;
+            const screenWidth = this.scale.width;
+            const screenHeight = this.scale.height;
+
+            if (Phaser.Geom.Rectangle.Contains(camera.worldView, bossEnemy.x, bossEnemy.y)) {
+                this.bossIndicator.setVisible(false);
+            } else {
+                this.bossIndicator.setVisible(true);
+
+                const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, bossEnemy.x, bossEnemy.y);
+                this.bossIndicator.setRotation(angle + Math.PI / 2);
+
+                const indicatorPadding = 50;
+                const indicatorX = Phaser.Math.Clamp(
+                    (bossEnemy.x - camera.scrollX) * (screenWidth / camera.width),
+                    indicatorPadding,
+                    screenWidth - indicatorPadding
+                );
+                const indicatorY = Phaser.Math.Clamp(
+                    (bossEnemy.y - camera.scrollY) * (screenHeight / camera.height),
+                    indicatorPadding,
+                    screenHeight - indicatorPadding
+                );
+                
+                let displayX = 0;
+                let displayY = 0;
+
+                const screenCenterX = screenWidth / 2;
+                const screenCenterY = screenHeight / 2;
+
+                const bossAngle = Phaser.Math.Angle.Between(screenCenterX, screenCenterY, indicatorX, indicatorY);
+                const screenAngle = Phaser.Math.Angle.Between(screenCenterX, screenCenterY, screenWidth, screenHeight);
+
+                if (Math.abs(bossAngle) > Math.abs(screenAngle) && Math.abs(bossAngle) < Math.PI - Math.abs(screenAngle)) {
+                    if (bossAngle > 0) {
+                        displayY = screenHeight - indicatorPadding;
+                    } else {
+                        displayY = indicatorPadding;
+                    }
+                    displayX = screenCenterX + (displayY - screenCenterY) / Math.tan(bossAngle)
+                } else {
+                    if (Math.abs(bossAngle) < Math.PI / 2) {
+                         displayX = screenWidth-indicatorPadding;
+                    } else {
+                        displayX = indicatorPadding;
+                    }
+                    displayY = screenCenterY + (displayX - screenCenterX) * Math.tan(bossAngle);
+                }
+
+                this.bossIndicator.setPosition(
+                    Phaser.Math.Clamp(displayX, indicatorPadding, screenWidth - indicatorPadding), 
+                    Phaser.Math.Clamp(displayY, indicatorPadding, screenHeight - indicatorPadding),
+                );
+            }
+        } else {
+            this.bossIndicator.setVisible(false);
         }
     }
 } 

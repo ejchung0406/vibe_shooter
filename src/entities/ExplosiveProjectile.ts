@@ -154,7 +154,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
                     
                     // Add knockback effect
                     if (distance > 0) {
-                        const knockbackForce = 80;
+                        const knockbackForce = 8;
                         const knockbackX = (dx / distance) * knockbackForce;
                         const knockbackY = (dy / distance) * knockbackForce;
                         

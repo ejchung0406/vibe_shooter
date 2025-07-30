@@ -60,6 +60,7 @@ export class Player extends Phaser.GameObjects.Container {
     private lifeSteal: number = 0;
     private hasAegis: boolean = false;
     private healthRegen: number = 0;
+    private healthRegenTimer: number = 0;
 
     // Attack properties
     private comboCounter: number = 0;
@@ -108,7 +109,7 @@ export class Player extends Phaser.GameObjects.Container {
     private dashTrail: Phaser.GameObjects.Graphics | null = null;
     private dashTrailPoints: { x: number, y: number, alpha: number }[] = [];
     private maxTrailPoints: number = 15;
-    private knockbackResistance: number = 0.3; // Reduce knockback to 30% of original
+    private knockbackResistance: number = 0.03; // Reduce knockback to 3% of original
     private items: ItemData[] = [];
     private maxItems: number = 12;
 
@@ -229,6 +230,7 @@ export class Player extends Phaser.GameObjects.Container {
 
         // Heal over time
         this.updateHealOverTime(delta);
+        this.updateHealthRegen(delta);
     }
 
     private triggerComboAttack() {
@@ -793,6 +795,16 @@ export class Player extends Phaser.GameObjects.Container {
         }
     }
 
+    private updateHealthRegen(delta: number) {
+        if (this.healthRegen > 0) {
+            this.healthRegenTimer += delta;
+            if (this.healthRegenTimer >= 1000) {
+                this.heal(this.maxHealth * this.healthRegen);
+                this.healthRegenTimer -= 1000;
+            }
+        }
+    }
+
     private constrainToCamera() {
         const camera = this.scene.cameras.main;
         const body = this.body as Phaser.Physics.Arcade.Body;
@@ -1087,7 +1099,7 @@ export class Player extends Phaser.GameObjects.Container {
     }
     
     public getDamageReduction(): number {
-        return (-Math.exp(-this.armor / 50) + 1) * 100; // Percentage reduction
+        return (-Math.exp(-this.armor / 100) + 1) * 100; // Percentage reduction
     }
     
     public increaseArmor(amount: number) {

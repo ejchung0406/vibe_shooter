@@ -13,6 +13,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected isBoss: boolean = false;
     protected xpMultiplier: number = 1;
     private highlight!: Phaser.GameObjects.Graphics;
+    private lifetime: number = 0;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -103,6 +104,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         // Custom update logic for subclasses
         this.customUpdate(time, delta);
+        this.checkDespawn(delta);
     }
 
     protected moveTowardsPlayer(delta: number) {
@@ -117,7 +119,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             
             // Only follow player if within detection radius
             const detectionRadius = 800; // Increased to ensure spawned enemies can detect player
-            if (distance > 0 && distance <= detectionRadius) {
+            if (distance > 0 && (this.isBoss || distance <= detectionRadius)) {
                 // Apply wave-based speed scaling (faster enemies from wave 3+)
                 const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
                 let speedMultiplier = 1.0;
@@ -139,11 +141,23 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
                     this.x += moveX;
                     this.y += moveY;
                 }
-            } else if (distance > detectionRadius) {
-                // Stop moving if player is too far
-                const body = this.body as Phaser.Physics.Arcade.Body;
-                if (body) {
-                    body.setVelocity(0, 0);
+            }
+        }
+    }
+
+    private checkDespawn(delta: number) {
+        this.lifetime += delta;
+
+        const DESPAWN_TIME = 30000; // 30 seconds
+        const DESPAWN_DISTANCE = 1500;
+
+        if (!this.isBoss && this.lifetime > DESPAWN_TIME) {
+            const scene = this.scene as any;
+            const player = scene.getPlayer();
+            if (player) {
+                const distance = Phaser.Math.Distance.Between(this.x, this.y, player.getX(), player.getY());
+                if (distance > DESPAWN_DISTANCE) {
+                    this.destroy();
                 }
             }
         }

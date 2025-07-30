@@ -5,33 +5,39 @@ A fast-paced web-based roguelike action game built with Phaser.js and TypeScript
 ## 🎮 Game Features
 
 ### Core Mechanics
-- **WASD Movement** - Smooth character control with diagonal normalization
-- **Right-Click Combat** - Manual shooting system with attack pause mechanics
-- **Progressive Leveling** - Gain XP from defeating enemies and choose powerful upgrades
+- **WASD Movement** - Smooth character control with diagonal normalization.
+- **Right-Click Combat** - Manual shooting system with attack pause mechanics.
+- **Progressive Leveling** - Gain XP from defeating enemies and choose powerful upgrades.
+- **Item System** - Collect items that provide passive stat boosts and unique effects.
 - **Enemy Variety** - Face different enemy types with unique behaviors:
-  - **Basic Enemies** - Standard melee attackers
-  - **Tank Enemies** - High HP, slow-moving bruisers
-  - **Ranged Enemies** - Long-range projectile attackers
+  - **Basic Enemies** - Standard melee attackers.
+  - **Tank Enemies** - High HP, slow-moving bruisers.
+  - **Ranged Enemies** - Long-range projectile attackers.
+  - **Boss Enemies** - Powerful enemies that spawn at the end of waves and drop rare items.
 
 ### Skills & Abilities
-- **Q Skill (Level 2+)** - Kai'Sa-inspired homing projectiles that curve toward enemies
-- **E Skill (Level 2+)** - Temporary shield that blocks all damage for 2 seconds
-- **Cooldown System** - Visual indicators show skill availability
+- **Q Skill (Level 2+)** - Kai'Sa-inspired homing projectiles that curve toward enemies.
+- **E Skill (Level 3+)** - Temporary shield that blocks all damage for 2 seconds.
+- **Dash Skill (Level 5+)** - A quick dash in the direction of the mouse cursor.
+- **R Skill (Level 9+)** - A powerful burst of explosive projectiles.
+- **F Skill (Level 7+)** - Summons a pet that fights alongside you for a limited time.
+- **Cooldown System** - Visual indicators show skill availability.
 
 ### Upgrade System
 - **Attack Modifications**:
-  - Double/Triple Shot - Fire multiple projectiles
-  - Spread Attack - Wide-angle projectile spread
-  - Burst Attack - Rapid-fire projectiles in sequence
-  - Combo Master - Every 3rd shot becomes an explosive projectile
-- **Stat Improvements** - Increase damage, speed, and other attributes
-- **Stackable Effects** - Combine multiple upgrades for powerful synergies
+  - Double/Triple/Quadruple Shot - Fire multiple projectiles.
+  - Piercing Shot - Projectiles pass through enemies.
+  - Combo Master - Every 3rd shot becomes an explosive projectile.
+- **Stat Improvements** - Increase damage, attack speed, movement speed, armor, and more.
+- **Skill Upgrades** - Enhance the effects of your Q, E, R, and F skills.
+- **Stackable Effects** - Combine multiple upgrades for powerful synergies.
 
 ### Dynamic Gameplay
-- **Scaling Difficulty** - Enemy HP and spawn rates increase with player level
-- **Boss Encounters** - Special high-HP enemies appear periodically
-- **Physics-Based Combat** - Knockback effects for both player and enemies
-- **Visual Feedback** - Damage numbers, health bars, and impact effects
+- **Scaling Difficulty** - Enemy HP and spawn rates increase with player level.
+- **Wave System** - Survive waves of enemies to progress and spawn a boss.
+- **Physics-Based Combat** - Knockback effects for both player and enemies.
+- **Visual Feedback** - Damage numbers, health bars, and impact effects.
+- **Character Stats Panel** - View your character's stats in real-time.
 
 ## 🎯 Controls
 
@@ -41,7 +47,11 @@ A fast-paced web-based roguelike action game built with Phaser.js and TypeScript
 | Attack | Right Mouse Button |
 | Q Skill | Q Key |
 | E Skill | E Key |
+| Dash | Shift Key |
+| R Skill | R Key |
+| F Skill | F Key |
 | Select Upgrade | Left Mouse Button |
+| Unequip Item | Right-click on item |
 
 ## 🚀 Getting Started
 
@@ -54,7 +64,7 @@ A fast-paced web-based roguelike action game built with Phaser.js and TypeScript
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd kyu-roguelike
+   cd kyu
    ```
 
 2. **Install dependencies**
@@ -79,28 +89,9 @@ npm run build
 
 The built files will be in the `dist/` directory.
 
-## 🌐 Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com) and sign up with GitHub
-3. Click "New Project" and import your repository
-4. Vercel will automatically detect it's a Vite project and deploy it
-5. Your game will be live at `https://your-project-name.vercel.app`
-
-### Other Platforms
-
-The game is a static site and can be deployed to:
-- GitHub Pages
-- Netlify
-- Any static hosting service
-
-Simply upload the contents of the `dist/` folder after running `npm run build`.
-
 ## 🛠️ Technical Stack
 
-- **Game Engine**: Phaser.js v3.70
+- **Game Engine**: Phaser.js v3.80
 - **Language**: TypeScript
 - **Build Tool**: Vite
 - **Physics**: Phaser Arcade Physics
@@ -109,32 +100,36 @@ Simply upload the contents of the `dist/` folder after running `npm run build`.
 ## 🎨 Game Architecture
 
 ### Scene Structure
-- **GameScene** - Main gameplay, entity management, UI
-- **UIScene** - Level-up upgrade selection interface
+- **StartScene** - The initial screen where the game begins.
+- **GameScene** - Main gameplay, entity management, UI.
+- **UIScene** - Level-up upgrade selection interface.
 
 ### Entity System
-- **Player** - Character with health, skills, and upgrade effects
-- **BaseEnemy** - Abstract enemy class with shared behaviors
-- **TankEnemy/RangedEnemy** - Specialized enemy types
-- **Projectile System** - Various projectile types (basic, explosive, homing)
+- **Player** - Character with health, skills, items, and upgrade effects.
+- **BaseEnemy** - Abstract enemy class with shared behaviors.
+- **TankEnemy/RangedEnemy/BossEnemy** - Specialized enemy types.
+- **Projectile System** - Various projectile types (basic, explosive, homing).
+- **Pet** - A temporary ally that assists the player in combat.
+- **Item** - Collectible objects that provide passive bonuses.
 
 ### Systems
-- **UpgradeManager** - Handles upgrade selection and effects
-- **EnemySpawner** - Manages wave-based enemy spawning
-- **Physics** - Collision detection and knockback effects
+- **UpgradeManager** - Handles upgrade selection and effects.
+- **EnemySpawner** - Manages wave-based enemy spawning.
+- **ItemManager** - Manages the pool of available items.
+- **SkillManager** - Manages skill data and descriptions.
+- **Physics** - Collision detection and knockback effects.
 
 ## 🎯 Gameplay Tips
 
-1. **Positioning is Key** - Use the camera follow system to stay aware of threats
-2. **Upgrade Synergy** - Combine Spread Attack + Burst Attack for maximum firepower
-3. **Skill Management** - Use Q skill for crowd control, E skill for emergency defense
-4. **Enemy Prioritization** - Take out ranged enemies first, use tanks as shields
-5. **Combo Master** - Every 3rd shot explodes - time it for maximum impact
+1. **Positioning is Key** - Use the camera follow system to stay aware of threats.
+2. **Upgrade Synergy** - Combine upgrades for maximum firepower and survivability.
+3. **Skill Management** - Use your skills strategically to control the battlefield.
+4. **Enemy Prioritization** - Take out ranged enemies first, and be prepared for bosses.
+5. **Itemization** - Collect items that complement your build and playstyle.
 
 ## 🐛 Known Issues
 
-- Large initial repository size (resolved with .gitignore)
-- Occasional GitHub push timeouts (usually succeeds despite error message)
+- No known issues at this time.
 
 ## 📝 License
 
