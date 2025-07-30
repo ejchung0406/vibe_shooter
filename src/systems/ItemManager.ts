@@ -144,36 +144,52 @@ export class ItemManager {
         this.items.set('rageblade', {
             id: 'rageblade',
             name: 'Rageblade',
-            description: '+15% Attack Damage, +20% Attack Speed, +1 Projectile',
+            description: '+15% Attack Damage, +20% Attack Speed, +1 Attack/Projectile',
             texture: 'rageblade_texture',
             rarity: 'epic',
             applyEffect: (player: Player) => {
                 player.increaseAttackDamageMultiplier(0.15);
                 player.increaseAttackSpeed(0.20);
                 player.increaseProjectileCount(1);
+                // Also increase melee attack count for melee players
+                if ((player as any).increaseMeleeAttackCount) {
+                    (player as any).increaseMeleeAttackCount(1);
+                }
             },
             removeEffect: (player: Player) => {
                 player.decreaseAttackDamageMultiplier(0.15);
                 player.decreaseAttackSpeed(0.20);
                 player.decreaseProjectileCount(1);
+                // Also decrease melee attack count for melee players
+                if ((player as any).decreaseMeleeAttackCount) {
+                    (player as any).decreaseMeleeAttackCount(1);
+                }
             }
         });
 
         this.items.set('deathbringer', {
             id: 'deathbringer',
             name: 'Deathbringer',
-            description: '+30% Attack Damage, +35% Attack Speed, +2 Projectiles',
+            description: '+30% Attack Damage, +35% Attack Speed, +2 Attacks/Projectiles',
             texture: 'deathbringer_texture',
             rarity: 'legendary',
             applyEffect: (player: Player) => {
                 player.increaseAttackDamageMultiplier(0.30);
                 player.increaseAttackSpeed(0.35);
                 player.increaseProjectileCount(2);
+                // Also increase melee attack count for melee players
+                if ((player as any).increaseMeleeAttackCount) {
+                    (player as any).increaseMeleeAttackCount(2);
+                }
             },
             removeEffect: (player: Player) => {
                 player.decreaseAttackDamageMultiplier(0.30);
                 player.decreaseAttackSpeed(0.35);
                 player.decreaseProjectileCount(2);
+                // Also decrease melee attack count for melee players
+                if ((player as any).decreaseMeleeAttackCount) {
+                    (player as any).decreaseMeleeAttackCount(2);
+                }
             }
         });
     }

@@ -33,10 +33,8 @@ export class UpgradeManager {
                 description: "Add 1 more projectile",
                 rarity: "common",
                 effect: (player: any) => {
-                    if (player.increaseMeleeAttackCount) {
-                        player.increaseMeleeAttackCount(1);
-                    } else {
-                        player.projectileCount++;
+                    if (player.increaseProjectileCount) {
+                        player.increaseProjectileCount(1);
                     }
                 },
                 character: 'ranged'
@@ -47,10 +45,8 @@ export class UpgradeManager {
                 description: "Add 2 more projectiles",
                 rarity: "rare",
                 effect: (player: any) => {
-                    if (player.increaseMeleeAttackCount) {
-                        player.increaseMeleeAttackCount(2);
-                    } else {
-                        player.projectileCount += 2;
+                    if (player.increaseProjectileCount) {
+                        player.increaseProjectileCount(2);
                     }
                 },
                 character: 'ranged'
@@ -61,13 +57,47 @@ export class UpgradeManager {
                 description: "Add 3 more projectiles",
                 rarity: "epic",
                 effect: (player: any) => {
-                    if (player.increaseMeleeAttackCount) {
-                        player.increaseMeleeAttackCount(3);
-                    } else {
-                        player.projectileCount += 3;
+                    if (player.increaseProjectileCount) {
+                        player.increaseProjectileCount(3);
                     }
                 },
                 character: 'ranged'
+            },
+            {
+                id: "double_swing",
+                name: "Double Swing",
+                description: "Add 1 more melee attack",
+                rarity: "common",
+                effect: (player: any) => {
+                    if (player.increaseMeleeAttackCount) {
+                        player.increaseMeleeAttackCount(1);
+                    }
+                },
+                character: 'melee'
+            },
+            {
+                id: "triple_swing",
+                name: "Triple Swing",
+                description: "Add 2 more melee attacks",
+                rarity: "rare",
+                effect: (player: any) => {
+                    if (player.increaseMeleeAttackCount) {
+                        player.increaseMeleeAttackCount(2);
+                    }
+                },
+                character: 'melee'
+            },
+            {
+                id: "quad_swing",
+                name: "Quadruple Swing",
+                description: "Add 3 more melee attacks",
+                rarity: "epic",
+                effect: (player: any) => {
+                    if (player.increaseMeleeAttackCount) {
+                        player.increaseMeleeAttackCount(3);
+                    }
+                },
+                character: 'melee'
             },
             {
                 id: "combo_master",
@@ -117,7 +147,8 @@ export class UpgradeManager {
                 rarity: "common",
                 effect: (player: any) => {
                     player.increaseBonusAttackDamage(10);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "power_shot_2",
@@ -127,7 +158,8 @@ export class UpgradeManager {
                 dependencies: ["power_shot"],
                 effect: (player: any) => {
                     player.increaseBonusAttackDamage(20);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "power_shot_3",
@@ -137,7 +169,8 @@ export class UpgradeManager {
                 dependencies: ["power_shot_2"],
                 effect: (player: any) => {
                     player.increaseBonusAttackDamage(30);
-                }
+                },
+                character: 'ranged'
             },
             {
                 id: "mega_blast",
@@ -147,7 +180,51 @@ export class UpgradeManager {
                 dependencies: ["power_shot_3"],
                 effect: (player: any) => {
                     player.increaseBonusAttackDamage(50);
-                }
+                },
+                character: 'ranged'
+            },
+            {
+                id: "power_swing",
+                name: "Power Swing",
+                description: "1.5x melee damage",
+                rarity: "common",
+                effect: (player: any) => {
+                    player.increaseAttackDamageMultiplier(1.5);
+                },
+                character: 'melee'
+            },
+            {
+                id: "power_swing_2",
+                name: "Power Swing 2",
+                description: "2x melee damage",
+                rarity: "rare",
+                dependencies: ["power_swing"],
+                effect: (player: any) => {
+                    player.increaseAttackDamageMultiplier(2);
+                },
+                character: 'melee'
+            },
+            {
+                id: "power_swing_3",
+                name: "Power Swing 3",
+                description: "3x melee damage",
+                rarity: "epic",
+                dependencies: ["power_swing_2"],
+                effect: (player: any) => {
+                    player.increaseAttackDamageMultiplier(3);
+                },
+                character: 'melee'
+            },
+            {
+                id: "mega_swing",
+                name: "Mega Swing",
+                description: "5x melee damage",
+                rarity: "legendary",
+                dependencies: ["power_swing_3"],
+                effect: (player: any) => {
+                    player.increaseAttackDamageMultiplier(5);
+                },
+                character: 'melee'
             },
             {
                 id: "piercing_shot",

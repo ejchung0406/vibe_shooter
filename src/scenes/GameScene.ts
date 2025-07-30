@@ -1101,7 +1101,14 @@ export class GameScene extends Phaser.Scene {
         this.attackSpeedText.setText(`Attack Speed: ${attackSpeed}/s`);
         this.movementSpeedText.setText(`Move Speed: ${moveSpeed}`);
         this.armorText.setText(`Armor: ${armor} (${damageReduction}%)`);
-        this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
+        
+        // Show appropriate count label based on player type
+        if (this.player instanceof MeleePlayer) {
+            this.projectileCountText.setText(`Attack Count: ${projectileCount}`);
+        } else {
+            this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
+        }
+        
         this.critChanceText.setText(`Crit Chance: ${critChance}%`);
         this.critDamageText.setText(`Crit Damage: ${critDamage}%`);
 

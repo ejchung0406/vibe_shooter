@@ -99,8 +99,7 @@ export class MeleePlayer extends BasePlayer {
                         damageMultiplier *= 1.5; // 50% bonus for close enemies
                     }
                     
-                    // Don't multiply by meleeAttackCount - Q skill has its own base damage
-                    const { damage, isCritical } = this.calculateDamage(this.attackDamage * damageMultiplier);
+                    const { damage, isCritical } = this.calculateDamage(this.attackDamage * this.meleeAttackCount * damageMultiplier);
                     enemy.takeDamage(damage, isCritical);
                     
                     // Apply bleeding effect only to boss enemies (1/5 of R skill bleeding)
@@ -187,6 +186,10 @@ export class MeleePlayer extends BasePlayer {
         this.meleeAttackCount += amount;
     }
 
+    public decreaseMeleeAttackCount(amount: number) {
+        this.meleeAttackCount = Math.max(1, this.meleeAttackCount - amount);
+    }
+
     public increaseQSkillDamage(amount: number) {
         // Use additive scaling for damage multiplier (deprecated - use increaseQSkillDamageMultiplier)
         this.qSkillDamageMultiplier += amount;
@@ -236,6 +239,7 @@ export class MeleePlayer extends BasePlayer {
     // Add a method to reset multipliers (called by upgrade system before reapplying)
     public resetMeleeMultipliers() {
         console.log(`resetMeleeMultipliers: before reset - attackRangeMultiplier=${this.attackRangeMultiplier}, qSkillRadiusMultiplier=${this.qSkillRadiusMultiplier}`);
+        this.meleeAttackCount = 1; // Reset to default 1 attack
         this.attackRangeMultiplier = 1;
         this.qSkillRadiusMultiplier = 1;
         this.qSkillDamageMultiplier = 1;
