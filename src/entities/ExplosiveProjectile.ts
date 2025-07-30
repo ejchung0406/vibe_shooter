@@ -49,6 +49,8 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         scene.physics.add.existing(this);
         const body = this.body as Phaser.Physics.Arcade.Body;
         body.setVelocity(this.velocityX, this.velocityY);
+        body.setCollideWorldBounds(true);
+        (this.body as Phaser.Physics.Arcade.Body).onWorldBounds = true;
         
         scene.add.existing(this);
         
@@ -79,18 +81,18 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         // Update position
         this.x += this.velocityX * (delta / 1000);
         this.y += this.velocityY * (delta / 1000);
-        
-        // Destroy if out of map bounds
-        const mapBounds = 2000;
-        if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
-            this.destroy();
-        }
     }
 
     private setupCollisions() {
         const scene = this.scene as Phaser.Scene;
         const gameScene = scene as any;
         
+        this.scene.physics.world.on('worldbounds', (body: any) => {
+            if (body.gameObject === this) {
+                this.destroy();
+            }
+        });
+
         // Check collision with enemies
         scene.physics.add.overlap(
             this,
