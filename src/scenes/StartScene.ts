@@ -5,6 +5,10 @@ export class StartScene extends Phaser.Scene {
         super({ key: 'StartScene' });
     }
 
+    init() {
+        // Game state will be reset when GameScene starts
+    }
+
     create() {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;

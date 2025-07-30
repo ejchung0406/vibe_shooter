@@ -71,6 +71,7 @@ export class GameScene extends Phaser.Scene {
         this.playerLevel = 1;
         this.playerXP = 0;
         this.xpToNextLevel = 100;
+        this.bossesDefeated = 0;
     }
 
     create() {

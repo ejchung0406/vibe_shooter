@@ -89,6 +89,8 @@ export class UIScene extends Phaser.Scene {
         });
 
         menuButton.on('pointerdown', () => {
+            this.scene.stop('GameScene');
+            this.scene.stop('UIScene');
             this.scene.start('StartScene');
         });
     }
@@ -155,6 +157,8 @@ export class UIScene extends Phaser.Scene {
         });
 
         menuButton.on('pointerdown', () => {
+            this.scene.stop('GameScene');
+            this.scene.stop('UIScene');
             this.scene.start('StartScene');
         });
     }
