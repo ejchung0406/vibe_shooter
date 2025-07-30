@@ -673,7 +673,7 @@ export class GameScene extends Phaser.Scene {
         
         // --- Level Up Bonuses ---
         // 1. Fixed armor gain
-        this.player.increaseArmor(5); 
+        this.player.increaseArmor(this.player.getArmorPerLevelUp()); 
 
         // 2. Heal 20% of max health
         this.player.heal(this.player.getMaxHealth() * 0.2); 

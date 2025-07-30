@@ -29,7 +29,8 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected attackDamageMultiplier: number = 1.0;
     protected attackDamage: number = 10;
 
-    protected armor: number = 5; // Default armor value
+    protected armor: number = 10; // Default armor value
+    protected armorPerLevelUp: number = 5; // Armor increase per level up
     protected projectileCount: number = 1;
     protected piercing: boolean = false;
     protected projectileSpeed: number = 500;
@@ -796,6 +797,8 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         this.projectileCount = 1;
         this.moveSpeed = 200;
         this.attackCooldown = 1000;
+        const level = this.scene.registry.get('playerLevel') || 1;
+        this.armor = 10 + this.armorPerLevelUp * level; // Reset armor to base value
 
         // Apply item effects
         this.items.forEach(item => {
@@ -1152,5 +1155,9 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     public increaseAttackDamage(multiplier: number) {
         this.baseAttackDamage *= multiplier;
         this.recalculateStats();
+    }
+    
+    public getArmorPerLevelUp(): number {
+        return this.armorPerLevelUp;
     }
 } 

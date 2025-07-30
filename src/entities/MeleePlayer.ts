@@ -20,6 +20,7 @@ export class MeleePlayer extends BasePlayer {
         this.health = 150;
         this.armor = 10;
         this.isMelee = true;
+        this.armorPerLevelUp = 7; // Armor increase per level up
         
         // Override dash duration to be 2x longer for melee
         this.dashDuration = 400; // 400ms instead of 200ms
