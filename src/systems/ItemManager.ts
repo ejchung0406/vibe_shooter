@@ -42,11 +42,14 @@ export class ItemManager {
         this.items.set('projectile_multiplier', {
             id: 'projectile_multiplier',
             name: 'Projectile Multiplier',
-            description: 'Projectile speed x1.5',
+            description: 'Projectile speed +100',
             texture: 'projectile_multiplier_texture',
             rarity: 'rare',
             applyEffect: (player: Player) => {
-                player.increaseProjectileSpeed(1.5);
+                player.increaseProjectileSpeedBonus(100);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseProjectileSpeedBonus(100);
             }
         });
 
@@ -57,19 +60,26 @@ export class ItemManager {
             texture: 'crit_damage_boost_texture',
             rarity: 'epic',
             applyEffect: (player: Player) => {
-                player.setCriticalStrikeDamage(player.getCriticalStrikeDamage() + 1);
+                player.increaseCriticalStrikeDamage(1.0);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseCriticalStrikeDamage(1.0);
             }
         });
 
-        this.items.set('legendary_item', {
-            id: 'legendary_item',
-            name: 'Legendary Item',
-            description: 'A powerful legendary item.',
-            texture: 'legendary_item_texture',
+        this.items.set('heart_of_tarrasque', {
+            id: 'heart_of_tarrasque',
+            name: 'Heart of Tarrasque',
+            description: '+300 Max Health. Regenerates 1% of max health per second.',
+            texture: 'heart_of_tarrasque_texture',
             rarity: 'legendary',
             applyEffect: (player: Player) => {
-                player.increaseProjectileSpeed(2);
-                player.setCriticalStrikeChance(player.getCriticalStrikeChance() + 0.5);
+                player.increaseMaxHealth(300);
+                player.setHealthRegen(0.01);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseMaxHealth(300);
+                player.setHealthRegen(0);
             }
         });
 
@@ -80,8 +90,12 @@ export class ItemManager {
             texture: 'blade_of_the_ruined_king_texture',
             rarity: 'epic',
             applyEffect: (player: Player) => {
-                player.increaseAttackDamage(1.5);
+                player.increaseAttackDamageMultiplier(0.5);
                 player.increaseAttackSpeed(0.25);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseAttackDamageMultiplier(0.5);
+                player.decreaseAttackSpeed(0.25);
             }
         });
 
@@ -124,6 +138,42 @@ export class ItemManager {
             },
             removeEffect: (player: Player) => {
                 player.decreaseMoveSpeed(0.15);
+            }
+        });
+
+        this.items.set('rageblade', {
+            id: 'rageblade',
+            name: 'Rageblade',
+            description: '+15% Attack Damage, +20% Attack Speed, +1 Projectile',
+            texture: 'rageblade_texture',
+            rarity: 'epic',
+            applyEffect: (player: Player) => {
+                player.increaseAttackDamageMultiplier(0.15);
+                player.increaseAttackSpeed(0.20);
+                player.increaseProjectileCount(1);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseAttackDamageMultiplier(0.15);
+                player.decreaseAttackSpeed(0.20);
+                player.decreaseProjectileCount(1);
+            }
+        });
+
+        this.items.set('deathbringer', {
+            id: 'deathbringer',
+            name: 'Deathbringer',
+            description: '+30% Attack Damage, +35% Attack Speed, +2 Projectiles',
+            texture: 'deathbringer_texture',
+            rarity: 'legendary',
+            applyEffect: (player: Player) => {
+                player.increaseAttackDamageMultiplier(0.30);
+                player.increaseAttackSpeed(0.35);
+                player.increaseProjectileCount(2);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseAttackDamageMultiplier(0.30);
+                player.decreaseAttackSpeed(0.35);
+                player.decreaseProjectileCount(2);
             }
         });
     }

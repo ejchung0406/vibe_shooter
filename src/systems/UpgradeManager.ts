@@ -94,7 +94,7 @@ export class UpgradeManager {
                 description: "+10 damage",
                 rarity: "common",
                 effect: (player: any) => {
-                    player.attackDamage += 10;
+                    player.increaseBonusAttackDamage(10);
                 }
             },
             {
@@ -104,7 +104,7 @@ export class UpgradeManager {
                 rarity: "rare",
                 dependencies: ["power_shot"],
                 effect: (player: any) => {
-                    player.attackDamage += 20;
+                    player.increaseBonusAttackDamage(20);
                 }
             },
             {
@@ -114,7 +114,7 @@ export class UpgradeManager {
                 rarity: "epic",
                 dependencies: ["power_shot_2"],
                 effect: (player: any) => {
-                    player.attackDamage += 30;
+                    player.increaseBonusAttackDamage(30);
                 }
             },
             {
@@ -124,7 +124,7 @@ export class UpgradeManager {
                 rarity: "rare",
                 dependencies: ["power_shot_3"],
                 effect: (player: any) => {
-                    player.attackDamage += 50;  
+                    player.increaseBonusAttackDamage(50);
                 }
             },
             {

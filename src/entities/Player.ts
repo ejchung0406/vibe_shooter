@@ -59,6 +59,7 @@ export class Player extends Phaser.GameObjects.Container {
     private eSkillHeals: boolean = false;
     private lifeSteal: number = 0;
     private hasAegis: boolean = false;
+    private healthRegen: number = 0;
 
     // Attack properties
     private comboCounter: number = 0;
@@ -464,6 +465,10 @@ export class Player extends Phaser.GameObjects.Container {
 
     public increaseProjectileCount(amount: number) {
         this.projectileCount += amount;
+    }
+
+    public decreaseProjectileCount(amount: number) {
+        this.projectileCount -= amount;
     }
 
     public enablePiercing() {
@@ -1029,10 +1034,18 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     private recalculateStats() {
-        // Reset bonuses
+        // Reset bonuses to their base values
         this.bonusAttackDamage = 0;
         this.attackDamageMultiplier = 1.0;
-        // ... reset other stats as needed
+        this.projectileSpeed = 500;
+        this.criticalStrikeDamage = 1.5;
+        this.maxHealth = 100;
+        this.healthRegen = 0;
+        this.lifeSteal = 0;
+        this.hasAegis = false;
+        this.projectileCount = 1;
+        this.moveSpeed = 200;
+        this.attackCooldown = 1000;
 
         // Apply item effects
         this.items.forEach(item => {
@@ -1094,6 +1107,34 @@ export class Player extends Phaser.GameObjects.Container {
         this.attackCooldown /= (1 - amount);
     }
     
+    public increaseProjectileSpeedBonus(amount: number) {
+        this.projectileSpeed += amount;
+    }
+
+    public decreaseProjectileSpeedBonus(amount: number) {
+        this.projectileSpeed -= amount;
+    }
+
+    public increaseCriticalStrikeDamage(amount: number) {
+        this.criticalStrikeDamage += amount;
+    }
+
+    public decreaseCriticalStrikeDamage(amount: number) {
+        this.criticalStrikeDamage -= amount;
+    }
+
+    public increaseMaxHealth(amount: number) {
+        this.maxHealth += amount;
+    }
+
+    public decreaseMaxHealth(amount: number) {
+        this.maxHealth -= amount;
+    }
+
+    public setHealthRegen(amount: number) {
+        this.healthRegen = amount;
+    }
+
     public setLifeSteal(amount: number) {
         this.lifeSteal = amount;
     }
@@ -1244,5 +1285,6 @@ export class Player extends Phaser.GameObjects.Container {
 
     public increaseAttackDamage(multiplier: number) {
         this.baseAttackDamage *= multiplier;
+        this.recalculateStats();
     }
 } 
