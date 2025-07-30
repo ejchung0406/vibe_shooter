@@ -450,6 +450,7 @@ export class GameScene extends Phaser.Scene {
 
             itemContainer.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
                 if (pointer.rightButtonDown()) {
+                    this.hideTooltip();
                     this.player.removeItem(item);
                     this.updateItemUI();
                 }
