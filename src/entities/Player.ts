@@ -21,7 +21,13 @@ export class Player extends Phaser.GameObjects.Container {
     private velocityX: number = 0;
     private velocityY: number = 0;
     private moveSpeed: number = 200;
+
+    // Stat rework
+    private baseAttackDamage: number = 10;
+    private bonusAttackDamage: number = 0;
+    private attackDamageMultiplier: number = 1.0;
     private attackDamage: number = 10;
+
     private armor: number = 5; // Default armor value
     private projectileCount: number = 1;
     private piercing: boolean = false;
@@ -51,6 +57,8 @@ export class Player extends Phaser.GameObjects.Container {
     private xpMultiplier: number = 1;
     private qDamageToNormalMultiplier: number = 1;
     private eSkillHeals: boolean = false;
+    private lifeSteal: number = 0;
+    private hasAegis: boolean = false;
 
     // Attack properties
     private comboCounter: number = 0;
@@ -443,11 +451,15 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     public increaseDamage(amount: number) {
-        this.attackDamage += amount;
+        this.bonusAttackDamage += amount;
     }
 
     public increaseMoveSpeed(amount: number) {
         this.moveSpeed *= (1 + amount);
+    }
+
+    public decreaseMoveSpeed(amount: number) {
+        this.moveSpeed /= (1 + amount);
     }
 
     public increaseProjectileCount(amount: number) {
@@ -930,10 +942,25 @@ export class Player extends Phaser.GameObjects.Container {
             finalDamage *= this.criticalStrikeDamage;
             isCritical = true;
         }
+
+        // Apply life steal
+        if (this.lifeSteal > 0) {
+            this.heal(finalDamage * this.lifeSteal);
+        }
+
         return { damage: finalDamage, isCritical };
     }
 
     private die() {
+        if (this.hasAegis) {
+            this.hasAegis = false;
+            this.health = this.maxHealth * 0.5;
+            const itemData = this.items.find(item => item.id === 'aegis_of_the_immortal');
+            if (itemData) {
+                this.removeItem(itemData);
+            }
+            return;
+        }
         console.log('Player died!');
         // Game over logic will be handled by the scene
         const scene = this.scene as Phaser.Scene;
@@ -985,13 +1012,37 @@ export class Player extends Phaser.GameObjects.Container {
         this.hasAdvancedCombo = true;
     }
 
-    public addItem(item: Item) {
+    public addItem(item: ItemData) {
         if (this.items.length >= this.maxItems) {
             return;
         }
-        this.items.push(item.getItemData());
-        item.applyEffect(this);
-        item.destroy();
+        this.items.push(item);
+        this.recalculateStats();
+    }
+
+    public removeItem(item: ItemData) {
+        const index = this.items.findIndex(i => i.id === item.id);
+        if (index > -1) {
+            this.items.splice(index, 1);
+            this.recalculateStats();
+        }
+    }
+
+    private recalculateStats() {
+        // Reset bonuses
+        this.bonusAttackDamage = 0;
+        this.attackDamageMultiplier = 1.0;
+        // ... reset other stats as needed
+
+        // Apply item effects
+        this.items.forEach(item => {
+            if (item.applyEffect) {
+                item.applyEffect(this);
+            }
+        });
+
+        // Final calculation
+        this.attackDamage = (this.baseAttackDamage + this.bonusAttackDamage) * this.attackDamageMultiplier;
     }
 
     public getItems(): ItemData[] {
@@ -1000,7 +1051,7 @@ export class Player extends Phaser.GameObjects.Container {
 
     // Getter methods for character stats display
     public getAttackDamage(): number {
-        return this.attackDamage;
+        return (this.baseAttackDamage + this.bonusAttackDamage) * this.attackDamageMultiplier;
     }
     
     public getAttackCooldown(): number {
@@ -1022,7 +1073,35 @@ export class Player extends Phaser.GameObjects.Container {
     public increaseArmor(amount: number) {
         this.armor += amount;
     }
+
+    public increaseBonusAttackDamage(amount: number) {
+        this.bonusAttackDamage += amount;
+    }
+
+    public decreaseBonusAttackDamage(amount: number) {
+        this.bonusAttackDamage -= amount;
+    }
+
+    public increaseAttackDamageMultiplier(amount: number) {
+        this.attackDamageMultiplier += amount;
+    }
+
+    public decreaseAttackDamageMultiplier(amount: number) {
+        this.attackDamageMultiplier -= amount;
+    }
+
+    public decreaseAttackSpeed(amount: number) {
+        this.attackCooldown /= (1 - amount);
+    }
     
+    public setLifeSteal(amount: number) {
+        this.lifeSteal = amount;
+    }
+
+    public setHasAegis(value: boolean) {
+        this.hasAegis = value;
+    }
+
     public getProjectileCount(): number {
         return this.projectileCount;
     }
@@ -1164,6 +1243,6 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     public increaseAttackDamage(multiplier: number) {
-        this.attackDamage *= multiplier;
+        this.baseAttackDamage *= multiplier;
     }
 } 

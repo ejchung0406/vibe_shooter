@@ -12,11 +12,14 @@ export class ItemManager {
         this.items.set('basic_sword', {
             id: 'basic_sword',
             name: 'Basic Sword',
-            description: '+10 Attack Damage',
+            description: 'Attack damage x1.2',
             texture: 'basic_sword_texture',
             rarity: 'common',
             applyEffect: (player: Player) => {
-                player.increaseDamage(10);
+                player.increaseAttackDamageMultiplier(0.2);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseAttackDamageMultiplier(0.2);
             }
         });
 
@@ -27,8 +30,12 @@ export class ItemManager {
             texture: 'berserkers_greaves_texture',
             rarity: 'common',
             applyEffect: (player: Player) => {
-                player.increaseDamage(50);
+                player.increaseBonusAttackDamage(50);
                 player.increaseAttackSpeed(0.5);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseBonusAttackDamage(50);
+                player.decreaseAttackSpeed(0.5);
             }
         });
 
@@ -57,15 +64,66 @@ export class ItemManager {
         this.items.set('legendary_item', {
             id: 'legendary_item',
             name: 'Legendary Item',
-            description: '+30% move speed, +30 armor, +30 attack, +30% attack speed, +3 projectiles',
+            description: 'A powerful legendary item.',
             texture: 'legendary_item_texture',
             rarity: 'legendary',
             applyEffect: (player: Player) => {
-                player.increaseMoveSpeed(0.3);
-                player.increaseArmor(30);
-                player.increaseDamage(30);
-                player.increaseAttackSpeed(0.3);
-                player.increaseProjectileCount(3);
+                player.increaseProjectileSpeed(2);
+                player.setCriticalStrikeChance(player.getCriticalStrikeChance() + 0.5);
+            }
+        });
+
+        this.items.set('blade_of_the_ruined_king', {
+            id: 'blade_of_the_ruined_king',
+            name: 'Blade of the Ruined King',
+            description: 'Attack damage x1.5, +25% Attack Speed',
+            texture: 'blade_of_the_ruined_king_texture',
+            rarity: 'epic',
+            applyEffect: (player: Player) => {
+                player.increaseAttackDamage(1.5);
+                player.increaseAttackSpeed(0.25);
+            }
+        });
+
+        this.items.set('vampiric_scepter', {
+            id: 'vampiric_scepter',
+            name: 'Vampiric Scepter',
+            description: 'Heal for 15% of damage dealt',
+            texture: 'vampiric_scepter_texture',
+            rarity: 'rare',
+            applyEffect: (player: Player) => {
+                player.setLifeSteal(0.15);
+            },
+            removeEffect: (player: Player) => {
+                player.setLifeSteal(0);
+            }
+        });
+
+        this.items.set('aegis_of_the_immortal', {
+            id: 'aegis_of_the_immortal',
+            name: 'Aegis of the Immortal',
+            description: 'Upon death, resurrect with 50% health. Consumed on use.',
+            texture: 'aegis_of_the_immortal_texture',
+            rarity: 'legendary',
+            applyEffect: (player: Player) => {
+                player.setHasAegis(true);
+            },
+            removeEffect: (player: Player) => {
+                player.setHasAegis(false);
+            }
+        });
+
+        this.items.set('boots_of_swiftness', {
+            id: 'boots_of_swiftness',
+            name: 'Boots of Swiftness',
+            description: '+15% Movement Speed',
+            texture: 'boots_of_swiftness_texture',
+            rarity: 'common',
+            applyEffect: (player: Player) => {
+                player.increaseMoveSpeed(0.15);
+            },
+            removeEffect: (player: Player) => {
+                player.decreaseMoveSpeed(0.15);
             }
         });
     }
@@ -73,14 +131,14 @@ export class ItemManager {
     public getItem(id: string): ItemData | undefined {
         return this.items.get(id);
     }
-
+    
     public getRandomItem(): ItemData | undefined {
         const itemsArray = Array.from(this.items.values());
         if (itemsArray.length === 0) {
             return undefined;
         }
 
-        const weights = {
+        const weights: { [key: string]: number } = {
             common: 10,
             rare: 5,
             epic: 2,
@@ -94,5 +152,14 @@ export class ItemManager {
 
         const randomIndex = Math.floor(Math.random() * weightedItems.length);
         return weightedItems[randomIndex];
+    }
+
+    public getRandomBossItem(): ItemData | undefined {
+        const bossItems = Array.from(this.items.values()).filter(item => item.rarity === 'epic' || item.rarity === 'legendary');
+        if (bossItems.length > 0) {
+            const randomIndex = Math.floor(Math.random() * bossItems.length);
+            return bossItems[randomIndex];
+        }
+        return this.getRandomItem(); // Fallback to a common item if no boss items are defined
     }
 } 

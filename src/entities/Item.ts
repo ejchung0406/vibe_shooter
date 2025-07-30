@@ -8,6 +8,7 @@ export interface ItemData {
     texture: string;
     rarity: 'common' | 'rare' | 'epic' | 'legendary';
     applyEffect: (player: Player) => void;
+    removeEffect?: (player: Player) => void;
 }
 
 export class Item extends Phaser.GameObjects.Container {

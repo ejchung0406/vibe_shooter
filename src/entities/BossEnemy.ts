@@ -126,7 +126,7 @@ export class BossEnemy extends BaseEnemy {
         const gameScene = this.scene as any;
         const itemManager = gameScene.getItemManager();
         if (itemManager) {
-            const itemData = itemManager.getRandomItem();
+            const itemData = itemManager.getRandomBossItem();
             if (itemData) {
                 const item = new Item(this.scene, this.x, this.y, itemData);
                 gameScene.addItem(item);

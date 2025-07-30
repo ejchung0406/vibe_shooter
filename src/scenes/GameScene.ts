@@ -72,6 +72,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
+        const mapSize = this.scale.width * 3;
+        this.physics.world.setBounds(-mapSize, -mapSize, mapSize * 2, mapSize * 2);
         // Enable physics debugging
         // this.physics.world.createDebugGraphic();
 
@@ -129,6 +131,14 @@ export class GameScene extends Phaser.Scene {
             this.addItem(testItem);
         }
 
+        // Timer for random item drops
+        this.time.addEvent({
+            delay: 60000, // 1 minute
+            callback: this.spawnRandomItem,
+            callbackScope: this,
+            loop: true
+        });
+
         window.addEventListener('keydown', this.handleKeyDown);
         this.events.on('shutdown', this.shutdown, this);
     }
@@ -176,11 +186,23 @@ export class GameScene extends Phaser.Scene {
         this.checkLevelUp();
     }
 
+    private spawnRandomItem() {
+        const itemData = this.itemManager.getRandomItem();
+        if (itemData) {
+            const player = this.getPlayer();
+            const spawnX = player.x + Phaser.Math.Between(-100, 100);
+            const spawnY = player.y + Phaser.Math.Between(-100, 100);
+            const item = new Item(this, spawnX, spawnY, itemData);
+            this.addItem(item);
+        }
+    }
+
     private handleItemPickup(player: any, item: any) {
         console.log('Item picked up:', item.getItemData().name); // Debug log
-        player.addItem(item);
+        player.addItem(item.getItemData());
         this.showItemCollectedPopup(item.getItemData());
         this.updateItemUI();
+        item.destroy();
     }
 
     public showBossClearedMessage() {
@@ -416,7 +438,7 @@ export class GameScene extends Phaser.Scene {
             itemContainer.on('pointerover', () => {
                 console.log('Item hover detected:', item.name); // Debug log
                 itemBg.setFillStyle(0x333333, 0.8); // Darker on hover
-                const text = `${item.name}\n${item.description}`;
+                const text = `${item.name}\n${item.description}\n\nRight-click to unequip`;
                 this.showSmartTooltip(this.input.x, this.input.y, text, true);
             });
             
@@ -424,6 +446,13 @@ export class GameScene extends Phaser.Scene {
                 console.log('Item hover out detected:', item.name); // Debug log
                 itemBg.setFillStyle(0xff0000); // Back to red
                 this.hideTooltip();
+            });
+
+            itemContainer.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                if (pointer.rightButtonDown()) {
+                    this.player.removeItem(item);
+                    this.updateItemUI();
+                }
             });
 
             this.itemContainers.push(itemContainer);

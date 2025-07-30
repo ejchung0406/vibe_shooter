@@ -9,7 +9,7 @@ export class EnemySpawner {
     private spawnInterval: number = 1500; // Faster spawning (1.5 seconds)
     private waveNumber: number = 1;
     private enemiesPerWave: number = 5; // More enemies per wave
-    private bossSpawnInterval: number = 4; // Boss every 4 waves (4, 8, 12, ...) for debugging
+    private bossSpawnInterval: number = 1; // Boss every 1 waves (4, 8, 12, ...) for debugging
     private bossActive: boolean = false; // Track if boss is currently active
     
     // Wave system based on kills
@@ -152,7 +152,7 @@ export class EnemySpawner {
         this.updateWaveDisplay();
         
         // Check for boss spawn
-        if (this.waveNumber % this.bossSpawnInterval === 0) {
+        if (this.waveNumber === 3 || (this.waveNumber > 3 && (this.waveNumber - 3) % 2 === 0)) {
             this.spawnBoss();
         }
         

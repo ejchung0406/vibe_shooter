@@ -48,6 +48,8 @@ export class Projectile extends Phaser.GameObjects.Container {
         body.setSize(16, 16);
         body.setOffset(-8, -8);
         body.setVelocity(this.velocityX, this.velocityY);
+        body.setCollideWorldBounds(true);
+        (this.body as Phaser.Physics.Arcade.Body).onWorldBounds = true;
         
         scene.add.existing(this);
         
@@ -72,13 +74,6 @@ export class Projectile extends Phaser.GameObjects.Container {
         // Update position
         this.x += this.velocityX * (delta / 1000);
         this.y += this.velocityY * (delta / 1000);
-        
-        // Destroy if out of map bounds
-        const gameScene = this.scene as any;
-        const mapBounds = gameScene.getMapSize() / 2;
-        if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
-            this.destroy();
-        }
     }
 
     private updateHoming(delta: number) {
@@ -128,6 +123,11 @@ export class Projectile extends Phaser.GameObjects.Container {
         const scene = this.scene as Phaser.Scene;
         const gameScene = scene as any;
         
+        this.scene.physics.world.on('worldbounds', (body: any) => {
+            if (body.gameObject === this) {
+                this.destroy();
+            }
+        });
         // Check collision with enemies
         scene.physics.add.overlap(
             this,
