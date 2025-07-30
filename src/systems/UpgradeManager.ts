@@ -562,40 +562,40 @@ export class UpgradeManager {
             {
                 id: "armor_boost_1",
                 name: "Armor Boost",
-                description: "+5 Armor",
+                description: "+1 Armor per every upgrade",
                 rarity: "common",
                 effect: (player: any) => {
-                    player.increaseArmor(5);
+                    player.increaseArmor(1);
                 }
             },
             {
                 id: "armor_boost_2",
                 name: "Armor Boost 2",
-                description: "+10 Armor",
+                description: "+2 Armor per every upgrade",
                 rarity: "rare",
                 dependencies: ["armor_boost_1"],
                 effect: (player: any) => {
-                    player.increaseArmor(10);
+                    player.increaseArmor(2);
                 }
             },
             {
                 id: "armor_boost_3",
                 name: "Armor Boost 3",
-                description: "+20 Armor",
+                description: "+5 Armor per every upgrade",
                 rarity: "epic",
                 dependencies: ["armor_boost_2"],
                 effect: (player: any) => {
-                    player.increaseArmor(20);
+                    player.increaseArmor(5);
                 }
             },
             {
                 id: "armor_boost_4",
                 name: "Armor Boost 4",
-                description: "+50 Armor",
+                description: "+8 Armor per every upgrade",
                 rarity: "legendary",
                 dependencies: ["armor_boost_3"],
                 effect: (player: any) => {
-                    player.increaseArmor(50);
+                    player.increaseArmor(8);
                 }
             },
 
