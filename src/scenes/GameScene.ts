@@ -29,6 +29,7 @@ export class GameScene extends Phaser.Scene {
     private playerLevel: number = 1;
     private playerXP: number = 0;
     private xpToNextLevel: number = 100;
+    private bossesDefeated: number = 0;
     
     // UI elements
     private levelText!: Phaser.GameObjects.Text;
@@ -184,6 +185,23 @@ export class GameScene extends Phaser.Scene {
         
         // Check for level up
         this.checkLevelUp();
+    }
+
+    public onBossDefeated() {
+        this.bossesDefeated++;
+        if (this.bossesDefeated >= 5) {
+            this.gameClear();
+        }
+    }
+
+    private gameClear() {
+        this.scene.pause();
+        this.scene.launch('UIScene', {
+            level: this.playerLevel,
+            upgradeManager: this.upgradeManager,
+            isGameClear: true,
+            gameTime: this.gameTime
+        });
     }
 
     private spawnRandomItem() {

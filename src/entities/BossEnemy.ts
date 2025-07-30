@@ -115,6 +115,7 @@ export class BossEnemy extends BaseEnemy {
         if (enemySpawner) {
             enemySpawner.onBossDefeated();
         }
+        gameScene.onBossDefeated();
         
         this.dropItems();
 

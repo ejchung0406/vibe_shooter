@@ -5,6 +5,8 @@ interface UISceneData {
     level: number;
     upgradeManager: UpgradeManager;
     isGameOver?: boolean;
+    isGameClear?: boolean;
+    gameTime?: number;
 }
 
 export class UIScene extends Phaser.Scene {
@@ -12,6 +14,8 @@ export class UIScene extends Phaser.Scene {
     private upgradeManager!: UpgradeManager;
     private upgradeCards: Phaser.GameObjects.Container[] = [];
     private isGameOver: boolean = false;
+    private isGameClear: boolean = false;
+    private gameTime: number = 0;
 
     constructor() {
         super({ key: 'UIScene' });
@@ -21,6 +25,8 @@ export class UIScene extends Phaser.Scene {
         this.level = data.level;
         this.upgradeManager = data.upgradeManager;
         this.isGameOver = data.isGameOver || false;
+        this.isGameClear = data.isGameClear || false;
+        this.gameTime = data.gameTime || 0;
     }
 
     create() {
@@ -30,11 +36,61 @@ export class UIScene extends Phaser.Scene {
         // Create background overlay
         const overlay = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.8).setDepth(2000);
 
-        if (this.isGameOver) {
+        if (this.isGameClear) {
+            this.createGameClearScreen();
+        } else if (this.isGameOver) {
             this.createGameOverScreen();
         } else {
             this.createLevelUpScreen();
         }
+    }
+
+    private createGameClearScreen() {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const title = this.add.text(screenWidth / 2, screenHeight * 0.3, 'GAME CLEAR', {
+            fontSize: '72px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#00ff88',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(2001);
+
+        const minutes = Math.floor(this.gameTime / 60000);
+        const seconds = Math.floor((this.gameTime % 60000) / 1000);
+        const timeString = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        const timeText = this.add.text(screenWidth / 2, screenHeight * 0.5, timeString, {
+            fontSize: '48px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(2001);
+
+        // Main menu button
+        const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
+        const menuText = this.add.text(0, 0, 'Main Menu', {
+            fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        const menuButton = this.add.container(screenWidth / 2, screenHeight * 0.65, [menuRect, menuText]).setDepth(2002);
+
+        menuButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
+
+        menuButton.on('pointerover', () => {
+            menuButton.setScale(1.1);
+            menuRect.setFillStyle(0xff6666);
+        });
+        menuButton.on('pointerout', () => {
+            menuButton.setScale(1);
+            menuRect.setFillStyle(0xff4444);
+        });
+
+        menuButton.on('pointerdown', () => {
+            this.scene.start('StartScene');
+        });
     }
 
     private createGameOverScreen() {

@@ -184,9 +184,12 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         
         let damageMultiplier = 1.0;
         if (waveNumber >= 3) {
-            damageMultiplier = 1.0 + (waveNumber - 2) * 0.25; // +25% damage per wave after wave 2
+            damageMultiplier = 1.0 + (waveNumber - 2) * 0.5; // +50% damage per wave after wave 2
+        } 
+
+        if (waveNumber >= 7) {
+            damageMultiplier = 3.0 + (waveNumber - 6) * 2; // +400% damage per wave after wave 6
         }
-        damageMultiplier = Math.min(damageMultiplier, 4.0); // Cap at 4x damage
         
         const scaledDamage = Math.round(this.damage * damageMultiplier);
         player.takeDamage(scaledDamage);
