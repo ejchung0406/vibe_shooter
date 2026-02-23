@@ -5,6 +5,7 @@ import { BuffShrine } from '../entities/obstacles/BuffShrine';
 import { WaterPool } from '../entities/obstacles/WaterPool';
 import { TreeCluster } from '../entities/obstacles/TreeCluster';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { MAP_SIZE } from '../GameConstants';
 
 export class ObstacleManager {
     private scene: Phaser.Scene & GameSceneInterface;
@@ -32,11 +33,12 @@ export class ObstacleManager {
     }
 
     private spawnInitialObstacles() {
-        // Spawn 5-8 chests scattered across ±3000
+        // Spawn 5-8 chests scattered across the map
         const chestCount = 5 + Math.floor(Math.random() * 4);
+        const chestRange = MAP_SIZE * 0.8;
         for (let i = 0; i < chestCount; i++) {
-            const x = (Math.random() - 0.5) * 6000;
-            const y = (Math.random() - 0.5) * 6000;
+            const x = (Math.random() - 0.5) * chestRange;
+            const y = (Math.random() - 0.5) * chestRange;
             // Ensure at least 400 from origin
             const dist = Math.sqrt(x * x + y * y);
             if (dist < 400) {
@@ -61,17 +63,19 @@ export class ObstacleManager {
     }
 
     private spawnInitialTerrain() {
-        // Spawn 3-4 water pools (within ±2000, at least 400 from origin)
-        const waterCount = 3 + Math.floor(Math.random() * 2);
+        const terrainRange = MAP_SIZE * 0.4;
+
+        // Spawn 4-6 water pools
+        const waterCount = 4 + Math.floor(Math.random() * 3);
         for (let i = 0; i < waterCount; i++) {
-            const { x, y } = this.getTerrainPosition(2000, 400);
+            const { x, y } = this.getTerrainPosition(terrainRange, 400);
             this.spawnWaterPool(x, y);
         }
 
-        // Spawn 4-5 tree clusters (within ±2000, at least 400 from origin)
-        const treeCount = 4 + Math.floor(Math.random() * 2);
+        // Spawn 6-8 tree clusters
+        const treeCount = 6 + Math.floor(Math.random() * 3);
         for (let i = 0; i < treeCount; i++) {
-            const { x, y } = this.getTerrainPosition(2000, 400);
+            const { x, y } = this.getTerrainPosition(terrainRange, 400);
             this.spawnTreeCluster(x, y);
         }
     }
@@ -123,6 +127,14 @@ export class ObstacleManager {
             this.scene.physics.add.collider(player, tree);
         }
         this.scene.physics.add.collider(this.scene.getEnemies(), tree);
+
+        // Projectiles destroyed on contact with trees
+        this.scene.physics.add.overlap(this.scene.getProjectiles(), tree, (_tree: any, proj: any) => {
+            proj.destroy();
+        });
+        this.scene.physics.add.overlap(this.scene.getEnemyProjectiles(), tree, (_tree: any, proj: any) => {
+            proj.destroy();
+        });
     }
 
     public update(delta: number) {

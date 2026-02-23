@@ -15,6 +15,7 @@ import { EffectsManager } from '../systems/EffectsManager';
 import { ObstacleManager } from '../systems/ObstacleManager';
 import { SynergyManager } from '../systems/SynergyManager';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { MAP_SIZE } from '../GameConstants';
 import { t } from '../i18n/i18n';
 
 export class GameScene extends Phaser.Scene implements GameSceneInterface {
@@ -83,6 +84,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     private streakText!: Phaser.GameObjects.Text;
     private pauseContainer!: Phaser.GameObjects.Container;
     private bossIndicator!: Phaser.GameObjects.Image;
+    private bossIndicatorText!: Phaser.GameObjects.Text;
 
     // Minimap
     private minimapGraphics!: Phaser.GameObjects.Graphics;
@@ -110,8 +112,8 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     create() {
-        const mapSize = this.scale.width * 3;
-        this.physics.world.setBounds(-mapSize, -mapSize, mapSize * 2, mapSize * 2);
+        const halfMap = MAP_SIZE / 2;
+        this.physics.world.setBounds(-halfMap, -halfMap, MAP_SIZE, MAP_SIZE);
         // Enable physics debugging
         // this.physics.world.createDebugGraphic();
 
@@ -1186,8 +1188,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
 
     private createBackground() {
         const tileSize = 200;
-        const screenWidth = this.scale.width;
-        const screenHeight = this.scale.height;
+        const halfMap = MAP_SIZE / 2;
 
         // Ensure the texture doesn't already exist
         if (this.textures.exists('grid')) {
@@ -1236,23 +1237,59 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         context.stroke();
         gridTexture.refresh();
 
-        // Create a tiling sprite using the new texture
-        const background = this.add.tileSprite(0, 0, screenWidth, screenHeight, 'grid');
-        background.setOrigin(0, 0);
-        background.setScrollFactor(0);
+        // Fixed-size TileSprite that scrolls with the world
+        const background = this.add.tileSprite(0, 0, MAP_SIZE, MAP_SIZE, 'grid');
+        background.setOrigin(0.5, 0.5);
+        background.setScrollFactor(1);
         background.setDepth(-1000);
 
-        // We'll update the tilePosition in the update loop to match the camera
-        this.events.on('update', () => {
-            background.setTilePosition(this.cameras.main.scrollX, this.cameras.main.scrollY);
-        });
+        // Procedural ground patches for visual variety
+        const patchGraphics = this.add.graphics();
+        patchGraphics.setDepth(-999);
+
+        // ~20 large dirt/dark-grass patches
+        for (let i = 0; i < 20; i++) {
+            const px = (Math.random() - 0.5) * MAP_SIZE * 0.9;
+            const py = (Math.random() - 0.5) * MAP_SIZE * 0.9;
+            const r = 80 + Math.random() * 150;
+            patchGraphics.fillStyle(0x3a5a20, 0.3 + Math.random() * 0.2);
+            patchGraphics.fillCircle(px, py, r);
+        }
+
+        // ~10 lighter clearings
+        for (let i = 0; i < 10; i++) {
+            const px = (Math.random() - 0.5) * MAP_SIZE * 0.9;
+            const py = (Math.random() - 0.5) * MAP_SIZE * 0.9;
+            const r = 60 + Math.random() * 120;
+            patchGraphics.fillStyle(0x4a7a30, 0.2 + Math.random() * 0.15);
+            patchGraphics.fillCircle(px, py, r);
+        }
+
+        // Map boundary — dark void outside + visible border
+        const boundaryGraphics = this.add.graphics();
+        boundaryGraphics.setDepth(-998);
+        const edgeThickness = 2000;
+
+        // Dark fill outside play area (4 rectangles around the edges)
+        boundaryGraphics.fillStyle(0x0a0a0a, 1);
+        // Top
+        boundaryGraphics.fillRect(-halfMap - edgeThickness, -halfMap - edgeThickness, MAP_SIZE + edgeThickness * 2, edgeThickness);
+        // Bottom
+        boundaryGraphics.fillRect(-halfMap - edgeThickness, halfMap, MAP_SIZE + edgeThickness * 2, edgeThickness);
+        // Left
+        boundaryGraphics.fillRect(-halfMap - edgeThickness, -halfMap, edgeThickness, MAP_SIZE);
+        // Right
+        boundaryGraphics.fillRect(halfMap, -halfMap, edgeThickness, MAP_SIZE);
+
+        // Visible inner border line
+        boundaryGraphics.lineStyle(4, 0x664422, 1);
+        boundaryGraphics.strokeRect(-halfMap, -halfMap, MAP_SIZE, MAP_SIZE);
     }
 
     private setupCamera() {
-        // Set camera bounds centered around world origin
-        const mapSize = this.scale.width * 3;
-        this.cameras.main.setBounds(-mapSize, -mapSize, mapSize * 2, mapSize * 2);
-        
+        const halfMap = MAP_SIZE / 2;
+        this.cameras.main.setBounds(-halfMap, -halfMap, MAP_SIZE, MAP_SIZE);
+
         // Start camera at player position
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     }
@@ -1275,7 +1312,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     public getMapSize() {
-        return this.scale.width * 6;
+        return MAP_SIZE;
     }
 
     private handleEnemyCollision(enemy1: any, enemy2: any) {
@@ -1899,22 +1936,31 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     private createBossIndicator() {
-        // Create a simple triangle texture for the boss indicator
+        // Create a 3x larger triangle texture for the boss indicator
         const graphics = this.add.graphics();
         graphics.fillStyle(0xff0000, 1);
         graphics.beginPath();
-        graphics.moveTo(0, -15);
-        graphics.lineTo(15, 15);
-        graphics.lineTo(-15, 15);
+        graphics.moveTo(45, 0);   // top center (shifted into 90x90 canvas)
+        graphics.lineTo(90, 90);  // bottom right
+        graphics.lineTo(0, 90);   // bottom left
         graphics.closePath();
         graphics.fillPath();
-        graphics.generateTexture('boss_indicator', 30, 30);
+        graphics.generateTexture('boss_indicator', 90, 90);
         graphics.destroy();
 
         this.bossIndicator = this.add.image(this.scale.width / 2, 50, 'boss_indicator')
             .setScrollFactor(0)
             .setDepth(5000)
             .setVisible(false);
+
+        this.bossIndicatorText = this.add.text(this.scale.width / 2, 50, 'BOSS', {
+            fontSize: '20px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ff0000',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(5000).setVisible(false);
     }
 
     private updateBossIndicator() {
@@ -1928,13 +1974,15 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
 
             if (Phaser.Geom.Rectangle.Contains(camera.worldView, bossEnemy.x, bossEnemy.y)) {
                 this.bossIndicator.setVisible(false);
+                this.bossIndicatorText.setVisible(false);
             } else {
                 this.bossIndicator.setVisible(true);
+                this.bossIndicatorText.setVisible(true);
 
                 const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, bossEnemy.x, bossEnemy.y);
                 this.bossIndicator.setRotation(angle + Math.PI / 2);
 
-                const indicatorPadding = 50;
+                const indicatorPadding = 80;
                 const indicatorX = Phaser.Math.Clamp(
                     (bossEnemy.x - camera.scrollX) * (screenWidth / camera.width),
                     indicatorPadding,
@@ -1945,7 +1993,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                     indicatorPadding,
                     screenHeight - indicatorPadding
                 );
-                
+
                 let displayX = 0;
                 let displayY = 0;
 
@@ -1971,13 +2019,15 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                     displayY = screenCenterY + (displayX - screenCenterX) * Math.tan(bossAngle);
                 }
 
-                this.bossIndicator.setPosition(
-                    Phaser.Math.Clamp(displayX, indicatorPadding, screenWidth - indicatorPadding), 
-                    Phaser.Math.Clamp(displayY, indicatorPadding, screenHeight - indicatorPadding),
-                );
+                const finalX = Phaser.Math.Clamp(displayX, indicatorPadding, screenWidth - indicatorPadding);
+                const finalY = Phaser.Math.Clamp(displayY, indicatorPadding, screenHeight - indicatorPadding);
+
+                this.bossIndicator.setPosition(finalX, finalY);
+                this.bossIndicatorText.setPosition(finalX, finalY + 55);
             }
         } else {
             this.bossIndicator.setVisible(false);
+            this.bossIndicatorText.setVisible(false);
         }
     }
 } 

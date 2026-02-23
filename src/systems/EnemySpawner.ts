@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { GameScene } from '../scenes/GameScene';
 import { t } from '../i18n/i18n';
 import { TankEnemy } from '../entities/TankEnemy';
@@ -13,7 +14,7 @@ import { SwarmBoss } from '../entities/bosses/SwarmBoss';
 import { PhaseShifterBoss } from '../entities/bosses/PhaseShifterBoss';
 import { TeleporterBoss } from '../entities/bosses/TeleporterBoss';
 import { FinalBoss } from '../entities/bosses/FinalBoss';
-import { SPAWN_DISTANCE, MAX_ENEMIES_ON_SCREEN } from '../GameConstants';
+import { SPAWN_DISTANCE, MAX_ENEMIES_ON_SCREEN, MAP_SIZE } from '../GameConstants';
 
 export class EnemySpawner {
     private scene: GameScene;
@@ -256,6 +257,11 @@ export class EnemySpawner {
                 x = playerX;
                 y = playerY;
         }
+
+        // Clamp within map bounds
+        const halfMap = MAP_SIZE / 2;
+        x = Phaser.Math.Clamp(x, -halfMap + 50, halfMap - 50);
+        y = Phaser.Math.Clamp(y, -halfMap + 50, halfMap - 50);
 
         return { x, y };
     }

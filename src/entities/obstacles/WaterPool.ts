@@ -27,7 +27,12 @@ export class WaterPool extends Phaser.GameObjects.Container {
         scene.physics.add.existing(this, true); // true = static
         const body = this.body as Phaser.Physics.Arcade.StaticBody;
         body.setCircle(this.radius);
-        body.updateFromGameObject();
+        body.immovable = true;
+        // Container lacks getTopLeft(), so manually fix body position & spatial tree
+        body.position.set(this.x - body.halfWidth, this.y - body.halfHeight);
+        body.updateCenter();
+        (scene.physics.world as any).staticTree.remove(body);
+        (scene.physics.world as any).staticTree.insert(body);
 
         scene.add.existing(this);
         this.setDepth(-500);
@@ -35,15 +40,18 @@ export class WaterPool extends Phaser.GameObjects.Container {
 
     private drawPool() {
         this.poolGraphics.clear();
-        // Main water fill
-        this.poolGraphics.fillStyle(0x2266aa, 0.35);
+        // Main water fill — opaque
+        this.poolGraphics.fillStyle(0x1a4a7a, 1);
         this.poolGraphics.fillCircle(0, 0, this.radius);
-        // Edge ring
-        this.poolGraphics.lineStyle(2, 0x3388cc, 0.4);
-        this.poolGraphics.strokeCircle(0, 0, this.radius);
+        // Lighter water layer
+        this.poolGraphics.fillStyle(0x2266aa, 0.7);
+        this.poolGraphics.fillCircle(0, 0, this.radius * 0.9);
         // Inner highlight
-        this.poolGraphics.fillStyle(0x44aaff, 0.15);
+        this.poolGraphics.fillStyle(0x3388cc, 0.5);
         this.poolGraphics.fillCircle(this.radius * 0.2, -this.radius * 0.2, this.radius * 0.4);
+        // Edge ring
+        this.poolGraphics.lineStyle(3, 0x0e3a5a, 0.9);
+        this.poolGraphics.strokeCircle(0, 0, this.radius);
     }
 
     public update(delta: number) {

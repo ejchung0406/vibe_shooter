@@ -34,7 +34,11 @@ export class BuffShrine extends Phaser.GameObjects.Container {
 
         const body = this.body as Phaser.Physics.Arcade.StaticBody;
         body.setCircle(20);
-        body.updateFromGameObject();
+        // Container lacks getTopLeft(), so manually fix body position & spatial tree
+        body.position.set(this.x - body.halfWidth, this.y - body.halfHeight);
+        body.updateCenter();
+        (scene.physics.world as any).staticTree.remove(body);
+        (scene.physics.world as any).staticTree.insert(body);
 
         // Player overlap
         const gameScene = scene as unknown as GameSceneInterface;

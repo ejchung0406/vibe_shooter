@@ -17,7 +17,12 @@ export class TreeCluster extends Phaser.GameObjects.Container {
         scene.physics.add.existing(this, true); // true = static
         const body = this.body as Phaser.Physics.Arcade.StaticBody;
         body.setCircle(this.radius);
-        body.updateFromGameObject();
+        body.immovable = true;
+        // Container lacks getTopLeft(), so manually fix body position & spatial tree
+        body.position.set(this.x - body.halfWidth, this.y - body.halfHeight);
+        body.updateCenter();
+        (scene.physics.world as any).staticTree.remove(body);
+        (scene.physics.world as any).staticTree.insert(body);
 
         scene.add.existing(this);
         this.setDepth(-400);

@@ -19,6 +19,7 @@ export const XP_WAVE_MULTIPLIERS: Record<number, number> = {
     11: 1.5,
 };
 
+export const MAP_SIZE = 5000;
 export const SPAWN_DISTANCE = 700;
 export const MAX_ENEMIES_ON_SCREEN = 20;
 export const ENEMY_DETECTION_RADIUS = 800;
