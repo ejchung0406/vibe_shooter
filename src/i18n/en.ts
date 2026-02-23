@@ -111,6 +111,14 @@ export const en: Record<string, string> = {
     'stats.mana': 'Mana: {current}/{max}',
     'stats.lightning_dmg': 'Lightning Dmg: {value}%',
 
+    // End-game stats
+    'stats.end_title': 'GAME STATISTICS',
+    'stats.end_time': 'Survival Time',
+    'stats.end_wave': 'Highest Wave',
+    'stats.end_kills': 'Total Kills',
+    'stats.end_damage': 'Total Damage',
+    'stats.end_items': 'Items Collected',
+
     // GameScene popups
     'popup.item_obtained': 'ITEM OBTAINED!',
     'popup.item_level_up': 'ITEM LEVEL UP!',
@@ -314,7 +322,7 @@ export const en: Record<string, string> = {
     'upgrade.mage_meteor_1.name': 'Meteor Shower',
     'upgrade.mage_meteor_1.desc': '+3 meteor impacts',
     'upgrade.mage_meteor_2.name': 'Cataclysm',
-    'upgrade.mage_meteor_2.desc': 'Meteors leave burning ground (3s DOT zone)',
+    'upgrade.mage_meteor_2.desc': 'Burning ground +80% damage, duration, and area',
     'upgrade.mage_lightning_power_1.name': 'Thunderstrike',
     'upgrade.mage_lightning_power_1.desc': '+50% chain lightning damage',
     'upgrade.mage_lightning_power_2.name': 'Tempest',
@@ -327,6 +335,10 @@ export const en: Record<string, string> = {
     'upgrade.mage_mana_regen_1.desc': '+3 mana regeneration per second',
     'upgrade.mage_mana_efficiency.name': 'Arcane Efficiency',
     'upgrade.mage_mana_efficiency.desc': 'Reduce mana costs by 25%',
+    'upgrade.mage_teleport_lightning.name': 'Lightning Blink',
+    'upgrade.mage_teleport_lightning.desc': 'Teleporting triggers Chain Lightning at your destination',
+    'upgrade.mage_attack_lightning.name': 'Static Discharge',
+    'upgrade.mage_attack_lightning.desc': 'Basic attacks trigger Chain Lightning on hit',
 
     // Item names & descriptions
     'item.basic_sword.name': 'Basic Sword',
@@ -369,4 +381,30 @@ export const en: Record<string, string> = {
     'item.mana_prism.desc': '+100 Max Mana, +3 Mana/s',
     'item.thunderlords_decree.name': "Thunderlord's Decree",
     'item.thunderlords_decree.desc': '+80 Max Mana, +50% Attack Damage, +25% Attack Speed',
+
+    // Skill tooltips - Ranged
+    'skill.q.ranged': 'Fires a burst of homing projectiles at nearby enemies.',
+    'skill.e.ranged': 'Creates a temporary shield that blocks incoming damage.',
+    'skill.r.ranged': 'Fires a powerful, explosive projectile.',
+    'skill.f.ranged': 'Summons a pet that follows you and attacks enemies.',
+    'skill.dash.ranged': 'Performs a quick dash in the direction of the mouse.',
+
+    // Skill tooltips - Melee
+    'skill.q.melee': 'Creates an AoE explosion around you that damages all nearby enemies. Closer enemies take 50% bonus damage.',
+    'skill.e.melee': 'Creates a temporary shield that blocks incoming damage. Can heal if upgraded.',
+    'skill.r.melee': 'Creates a large AoE attack that damages and applies bleeding to all enemies.',
+    'skill.f.melee': 'Summons a pet that follows you and attacks enemies.',
+    'skill.dash.melee': 'Performs a quick dash in the direction of the mouse.',
+
+    // Skill tooltips - Mage
+    'skill.q.mage': 'Chain Lightning — strikes the nearest enemy, then arcs to nearby targets. Auto-casts when ready.',
+    'skill.e.mage': 'Creates a temporary arcane shield that blocks incoming damage.',
+    'skill.r.mage': 'Meteor Storm — rains meteors around the cursor, each dealing AoE damage and leaving burning ground.',
+    'skill.f.mage': 'Summons an arcane familiar that follows you and attacks enemies.',
+    'skill.dash.mage': 'Blink — teleport a short distance in the direction of the mouse.',
+
+    // Skill misc
+    'skill.damage': 'Damage: {value}%',
+    'skill.autocast_on': '[Auto-cast: ON]',
+    'skill.autocast_off': '[Auto-cast: OFF]',
 };

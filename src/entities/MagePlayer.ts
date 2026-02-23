@@ -10,8 +10,9 @@ export class MagePlayer extends BasePlayer {
     protected chainLightningDamageRetention: number = 0.7;
     protected lightningDamageMultiplier: number = 1.0;
     protected meteorCount: number = 5;
-    protected hasBurningGround: boolean = false;
+    protected burningGroundMultiplier: number = 1.0;
     protected autoQInterval: number = 0; // No extra delay — auto-cast as soon as cooldown ready
+    protected autoQEnabled: boolean = true;
 
     // Mana bar visuals (on player entity)
     private manaBarBg!: Phaser.GameObjects.Rectangle;
@@ -23,6 +24,8 @@ export class MagePlayer extends BasePlayer {
     private readonly MANA_COST_R = 30;
     private readonly MANA_COST_TELEPORT = 5;
     protected manaCostReduction: number = 0; // 0-1 percentage
+    protected teleportCastsQ: boolean = false;
+    protected attackCastsQ: boolean = false;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -131,7 +134,7 @@ export class MagePlayer extends BasePlayer {
         this.updateManaBar();
 
         // Auto-cast Q (chain lightning) when cooldown ready and mana available
-        if (this.qSkillUnlocked && this.getCooldownTimer('q') <= 0 && this.canAffordMana(this.MANA_COST_Q)) {
+        if (this.autoQEnabled && this.qSkillUnlocked && this.getCooldownTimer('q') <= 0 && this.canAffordMana(this.MANA_COST_Q)) {
             // Check if enemies are in range before auto-casting
             const gameScene = this.scene as GameSceneInterface;
             const enemies = gameScene.getEnemies().getChildren();
@@ -194,6 +197,15 @@ export class MagePlayer extends BasePlayer {
         // Instantly move player
         this.x = targetX;
         this.y = targetY;
+
+        // Grant brief invulnerability to prevent instant death from enemies at destination
+        this.isInvulnerable = true;
+        this.invulnerabilityTimer = 0;
+
+        // Trigger chain lightning at destination if upgraded
+        if (this.teleportCastsQ) {
+            this.castChainLightningAt(targetX, targetY);
+        }
 
         // Purple flash at destination
         const endFlash = gameScene.add.graphics();
@@ -571,8 +583,8 @@ export class MagePlayer extends BasePlayer {
     }
 
     private createBurningGround(x: number, y: number, scene: GameSceneInterface) {
-        const radius = 150;
-        const duration = 4000;
+        const radius = 150 * this.burningGroundMultiplier;
+        const duration = 4000 * this.burningGroundMultiplier;
         const tickInterval = 400;
 
         const ground = scene.add.graphics();
@@ -609,10 +621,10 @@ export class MagePlayer extends BasePlayer {
                     if (dist <= radius) {
                         // % max HP burn — hurts bosses too
                         const dotDamage = Math.max(
-                            this.attackDamage * 0.5 * this.spellAmplification,
-                            (enemy.getMaxHealth?.() || 0) * 0.02
+                            this.attackDamage * 0.5 * this.spellAmplification * this.burningGroundMultiplier,
+                            (enemy.getMaxHealth?.() || 0) * 0.02 * this.burningGroundMultiplier
                         );
-                        enemy.takeDamage(dotDamage, false);
+                        enemy.takeDotDamage(dotDamage);
                     }
                 });
             },
@@ -648,8 +660,10 @@ export class MagePlayer extends BasePlayer {
         this.chainLightningDamageRetention = 0.7;
         this.lightningDamageMultiplier = 1.0;
         this.meteorCount = 5;
-        this.hasBurningGround = false;
+        this.burningGroundMultiplier = 1.0;
         this.manaCostReduction = 0;
+        this.teleportCastsQ = false;
+        this.attackCastsQ = false;
     }
 
     // Mage-specific upgrade methods
@@ -681,8 +695,8 @@ export class MagePlayer extends BasePlayer {
         this.meteorCount += amount;
     }
 
-    public setHasBurningGround(value: boolean) {
-        this.hasBurningGround = value;
+    public increaseBurningGroundMultiplier(amount: number) {
+        this.burningGroundMultiplier += amount;
     }
 
     public setManaCostReduction(value: number) {
@@ -692,5 +706,99 @@ export class MagePlayer extends BasePlayer {
     public reduceQCooldown(multiplier: number) {
         const cd = this.cooldowns.get('q');
         if (cd) cd.max = Math.floor(cd.max * multiplier);
+    }
+
+    public toggleAutoQ(): boolean {
+        this.autoQEnabled = !this.autoQEnabled;
+        return this.autoQEnabled;
+    }
+
+    public isAutoQEnabled(): boolean {
+        return this.autoQEnabled;
+    }
+
+    public setTeleportCastsQ(value: boolean) {
+        this.teleportCastsQ = value;
+    }
+
+    public setAttackCastsQ(value: boolean) {
+        this.attackCastsQ = value;
+    }
+
+    public hasAttackCastsQ(): boolean {
+        return this.attackCastsQ;
+    }
+
+    /**
+     * Cast chain lightning starting from an arbitrary position (not from the player).
+     * Used by teleport-lightning and attack-lightning upgrades.
+     */
+    public castChainLightningAt(originX: number, originY: number) {
+        const gameScene = this.scene as GameSceneInterface;
+        const enemies = gameScene.getEnemies().getChildren();
+
+        // Find nearest enemy within 700px of the origin
+        let nearestEnemy: any = null;
+        let nearestDistance = 700;
+
+        enemies.forEach((enemy: any) => {
+            const dx = enemy.x - originX;
+            const dy = enemy.y - originY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestEnemy = enemy;
+            }
+        });
+
+        if (!nearestEnemy) return;
+
+        const hitTargets: any[] = [nearestEnemy];
+        let currentTarget = nearestEnemy;
+        let currentDamage = this.attackDamage * 1.5 * this.spellAmplification * this.lightningDamageMultiplier;
+
+        // Deal damage to first target
+        const { damage: firstDamage, isCritical: firstCrit } = this.calculateDamage(currentDamage);
+        nearestEnemy.takeDamage(firstDamage, firstCrit);
+
+        // Draw lightning from origin to first target
+        this.drawLightningBolt(originX, originY, nearestEnemy.x, nearestEnemy.y, gameScene);
+
+        // Chain to nearby enemies
+        for (let i = 0; i < this.chainLightningCount; i++) {
+            currentDamage *= this.chainLightningDamageRetention;
+
+            let nextTarget: any = null;
+            let nextDistance = 250;
+
+            enemies.forEach((enemy: any) => {
+                if (hitTargets.includes(enemy)) return;
+                const ddx = enemy.x - currentTarget.x;
+                const ddy = enemy.y - currentTarget.y;
+                const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+                if (dist < nextDistance) {
+                    nextDistance = dist;
+                    nextTarget = enemy;
+                }
+            });
+
+            if (!nextTarget) break;
+
+            hitTargets.push(nextTarget);
+
+            const chainDelay = (i + 1) * 80;
+            const prevTarget = currentTarget;
+            const chainDamage = currentDamage;
+            const capturedNext = nextTarget;
+
+            this.scene.time.delayedCall(chainDelay, () => {
+                if (!capturedNext.active) return;
+                const { damage, isCritical } = this.calculateDamage(chainDamage);
+                capturedNext.takeDamage(damage, isCritical);
+                this.drawLightningBolt(prevTarget.x, prevTarget.y, capturedNext.x, capturedNext.y, gameScene);
+            });
+
+            currentTarget = nextTarget;
+        }
     }
 }

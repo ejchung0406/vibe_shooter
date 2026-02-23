@@ -2,6 +2,14 @@ import Phaser from 'phaser';
 import { UpgradeManager } from '../systems/UpgradeManager';
 import { t } from '../i18n/i18n';
 
+interface GameStats {
+    gameTime: number;
+    highestWave: number;
+    totalKills: number;
+    totalDamageDealt: number;
+    itemsCollected: number;
+}
+
 interface UISceneData {
     level: number;
     upgradeManager: UpgradeManager;
@@ -9,6 +17,7 @@ interface UISceneData {
     isGameClear?: boolean;
     gameTime?: number;
     rerollsRemaining?: number;
+    stats?: GameStats;
 }
 
 export class UIScene extends Phaser.Scene {
@@ -21,6 +30,7 @@ export class UIScene extends Phaser.Scene {
     private rerollsRemaining: number = 0;
     private cardRerollUsed: boolean[] = [false, false, false];
     private currentUpgrades: any[] = [];
+    private stats: GameStats | null = null;
 
     constructor() {
         super({ key: 'UIScene' });
@@ -33,6 +43,7 @@ export class UIScene extends Phaser.Scene {
         this.isGameClear = data.isGameClear || false;
         this.gameTime = data.gameTime || 0;
         this.rerollsRemaining = data.rerollsRemaining || 0;
+        this.stats = data.stats || null;
     }
 
     create() {
@@ -51,11 +62,74 @@ export class UIScene extends Phaser.Scene {
         }
     }
 
+    private formatNumber(num: number): string {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return Math.round(num).toString();
+    }
+
+    private createStatsPanel(centerX: number, startY: number): number {
+        if (!this.stats) return startY;
+
+        const panelWidth = 400;
+        const panelHeight = 200;
+
+        // Dark panel background
+        const panel = this.add.rectangle(centerX, startY + panelHeight / 2, panelWidth, panelHeight, 0x111122, 0.9);
+        panel.setStrokeStyle(2, 0x334466);
+        panel.setDepth(2001);
+
+        // Stats title
+        this.add.text(centerX, startY + 15, t('stats.end_title'), {
+            fontSize: '22px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#88ccff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(2002);
+
+        // Format time
+        const minutes = Math.floor(this.stats.gameTime / 60000);
+        const seconds = Math.floor((this.stats.gameTime % 60000) / 1000);
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        const lines = [
+            { label: t('stats.end_time'), value: timeStr },
+            { label: t('stats.end_wave'), value: String(this.stats.highestWave) },
+            { label: t('stats.end_kills'), value: this.formatNumber(this.stats.totalKills) },
+            { label: t('stats.end_damage'), value: this.formatNumber(this.stats.totalDamageDealt) },
+            { label: t('stats.end_items'), value: String(this.stats.itemsCollected) },
+        ];
+
+        let lineY = startY + 45;
+        lines.forEach(line => {
+            this.add.text(centerX - panelWidth / 2 + 30, lineY, line.label, {
+                fontSize: '18px',
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                color: '#cccccc'
+            }).setOrigin(0, 0.5).setDepth(2002);
+
+            this.add.text(centerX + panelWidth / 2 - 30, lineY, line.value, {
+                fontSize: '18px',
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                color: '#ffffff',
+                fontStyle: 'bold'
+            }).setOrigin(1, 0.5).setDepth(2002);
+
+            lineY += 28;
+        });
+
+        return startY + panelHeight + 20;
+    }
+
     private createGameClearScreen() {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        this.add.text(screenWidth / 2, screenHeight * 0.3, t('ui.game_clear'), {
+        this.add.text(screenWidth / 2, screenHeight * 0.15, t('ui.game_clear'), {
             fontSize: '72px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ff88',
@@ -66,14 +140,18 @@ export class UIScene extends Phaser.Scene {
         const seconds = Math.floor((this.gameTime % 60000) / 1000);
         const timeString = t('ui.time', { time: `${minutes}:${seconds.toString().padStart(2, '0')}` });
 
-        this.add.text(screenWidth / 2, screenHeight * 0.5, timeString, {
-            fontSize: '48px',
+        this.add.text(screenWidth / 2, screenHeight * 0.28, timeString, {
+            fontSize: '36px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(2001);
 
+        // Stats panel
+        const afterStats = this.createStatsPanel(screenWidth / 2, screenHeight * 0.35);
+
         // Main menu button
+        const btnY = Math.max(afterStats + 10, screenHeight * 0.75);
         const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
         const menuText = this.add.text(0, 0, t('ui.main_menu'), {
             fontSize: '24px',
@@ -81,7 +159,7 @@ export class UIScene extends Phaser.Scene {
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-        const menuButton = this.add.container(screenWidth / 2, screenHeight * 0.65, [menuRect, menuText]).setDepth(2002);
+        const menuButton = this.add.container(screenWidth / 2, btnY, [menuRect, menuText]).setDepth(2002);
 
         menuButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
 
@@ -105,12 +183,17 @@ export class UIScene extends Phaser.Scene {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        this.add.text(screenWidth / 2, screenHeight * 0.3, t('ui.game_over'), {
+        this.add.text(screenWidth / 2, screenHeight * 0.12, t('ui.game_over'), {
             fontSize: '72px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ff0000',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(2001);
+
+        // Stats panel
+        const afterStats = this.createStatsPanel(screenWidth / 2, screenHeight * 0.25);
+
+        const btnY = Math.max(afterStats + 10, screenHeight * 0.6);
 
         // Restart button
         const restartRect = this.add.rectangle(0, 0, 200, 60, 0x00ff88);
@@ -120,7 +203,7 @@ export class UIScene extends Phaser.Scene {
             color: '#000000',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-        const restartButton = this.add.container(screenWidth / 2, screenHeight * 0.5, [restartRect, restartText]).setDepth(2002);
+        const restartButton = this.add.container(screenWidth / 2, btnY, [restartRect, restartText]).setDepth(2002);
 
         // Main menu button
         const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
@@ -130,7 +213,7 @@ export class UIScene extends Phaser.Scene {
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-        const menuButton = this.add.container(screenWidth / 2, screenHeight * 0.65, [menuRect, menuText]).setDepth(2002);
+        const menuButton = this.add.container(screenWidth / 2, btnY + 80, [menuRect, menuText]).setDepth(2002);
 
         // Make buttons interactive
         restartButton.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);

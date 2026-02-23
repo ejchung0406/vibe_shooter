@@ -31,4 +31,8 @@ export interface GameSceneInterface extends Phaser.Scene {
     gameOver(): void;
     onBossDefeated(): void;
     updateWaveCounter(waveNumber: number): void;
+    addDamageDealt(damage: number): void;
+    addKill(): void;
+    updateHighestWave(wave: number): void;
+    getGameStats(): { gameTime: number; highestWave: number; totalKills: number; totalDamageDealt: number; itemsCollected: number };
 }

@@ -40,6 +40,12 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     private playerXP: number = 0;
     private xpToNextLevel: number = 200;
     private bossesDefeated: number = 0;
+
+    // Stats tracking
+    private totalDamageDealt: number = 0;
+    private totalKills: number = 0;
+    private highestWave: number = 1;
+    private itemsCollected: number = 0;
     
     // UI elements
     private levelText!: Phaser.GameObjects.Text;
@@ -49,6 +55,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     private healthText!: Phaser.GameObjects.Text;
     private xpBar!: Phaser.GameObjects.Rectangle;
     private qSkillUI!: Phaser.GameObjects.Container;
+    private autocastIndicator!: Phaser.GameObjects.Text;
     private eSkillUI!: Phaser.GameObjects.Container;
     private dashSkillUI!: Phaser.GameObjects.Container; // Dash skill UI
     private rSkillUI!: Phaser.GameObjects.Container;
@@ -93,6 +100,10 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         this.playerXP = 0;
         this.xpToNextLevel = 100;
         this.bossesDefeated = 0;
+        this.totalDamageDealt = 0;
+        this.totalKills = 0;
+        this.highestWave = 1;
+        this.itemsCollected = 0;
 
         // Set character type
         this.character = data.character || 'ranged';
@@ -249,7 +260,8 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
             level: this.playerLevel,
             upgradeManager: this.upgradeManager,
             isGameClear: true,
-            gameTime: this.gameTime
+            gameTime: this.gameTime,
+            stats: this.getGameStats()
         });
     }
 
@@ -278,6 +290,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
 
     private handleItemPickup(player: any, item: any) {
         const itemData = item.getItemData();
+        this.itemsCollected++;
         const leveledUp = player.addItem(itemData);
         if (leveledUp) {
             // Find the leveled-up item for current level
@@ -322,6 +335,15 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         if (this.tooltip) {
             this.tooltip.destroy();
             this.tooltip = null as any;
+        }
+    }
+
+    private updateAutocastIndicator() {
+        if (!this.autocastIndicator) return;
+        if (this.player instanceof MagePlayer) {
+            const on = (this.player as MagePlayer).isAutoQEnabled();
+            this.autocastIndicator.setText(on ? 'AUTO' : 'OFF');
+            this.autocastIndicator.setColor(on ? '#00ff00' : '#ff4444');
         }
     }
 
@@ -552,7 +574,12 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         if (skillData) {
             let text = skillData.description;
             if (skillData.damageMultiplier) {
-                text += `\nDamage: ${skillData.damageMultiplier * 100}%`;
+                text += `\n${t('skill.damage', { value: String(skillData.damageMultiplier * 100) })}`;
+            }
+            // Show auto-cast status for mage Q
+            if (skillId === 'Q' && this.player instanceof MagePlayer) {
+                const autoOn = (this.player as MagePlayer).isAutoQEnabled();
+                text += `\n${autoOn ? t('skill.autocast_on') : t('skill.autocast_off')}`;
             }
             this.showSmartTooltip(this.input.x, this.input.y, text, true);
         }
@@ -1113,6 +1140,30 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     public getEnemySpawner() {
         return this.enemySpawner;
     }
+
+    public addDamageDealt(damage: number) {
+        this.totalDamageDealt += damage;
+    }
+
+    public addKill() {
+        this.totalKills++;
+    }
+
+    public updateHighestWave(wave: number) {
+        if (wave > this.highestWave) {
+            this.highestWave = wave;
+        }
+    }
+
+    public getGameStats() {
+        return {
+            gameTime: this.gameTime,
+            highestWave: this.highestWave,
+            totalKills: this.totalKills,
+            totalDamageDealt: this.totalDamageDealt,
+            itemsCollected: this.itemsCollected,
+        };
+    }
     
     public updateWaveCounter(waveNumber: number) {
         if (!this.waveText || !this.enemySpawner) return;
@@ -1134,7 +1185,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     private createBackground() {
-        const gridSize = 100;
+        const tileSize = 200;
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
@@ -1143,26 +1194,52 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
             this.textures.remove('grid');
         }
 
-        // Create an in-memory texture for the grid pattern
-        const gridTexture = this.textures.createCanvas('grid', gridSize, gridSize);
+        // Create an in-memory texture for the grass pattern
+        const gridTexture = this.textures.createCanvas('grid', tileSize, tileSize);
         if (!gridTexture) return;
         const context = gridTexture.getContext();
 
-        // Draw the grid lines onto the texture
-        context.strokeStyle = '#666666';
+        // Green grass base
+        context.fillStyle = '#2d5a1e';
+        context.fillRect(0, 0, tileSize, tileSize);
+
+        // Subtle lighter grass patches
+        context.fillStyle = '#3a6e28';
+        for (let i = 0; i < 6; i++) {
+            const px = Math.random() * tileSize;
+            const py = Math.random() * tileSize;
+            const r = 8 + Math.random() * 15;
+            context.beginPath();
+            context.arc(px, py, r, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        // Small dirt spots
+        context.fillStyle = '#4a3a20';
+        for (let i = 0; i < 3; i++) {
+            const px = Math.random() * tileSize;
+            const py = Math.random() * tileSize;
+            const r = 2 + Math.random() * 4;
+            context.beginPath();
+            context.arc(px, py, r, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        // Darker green grid lines
+        context.strokeStyle = '#1a3d10';
         context.lineWidth = 1;
         context.beginPath();
-        context.moveTo(0, gridSize);
-        context.lineTo(gridSize, gridSize);
-        context.moveTo(gridSize, 0);
-        context.lineTo(gridSize, gridSize);
+        context.moveTo(0, tileSize);
+        context.lineTo(tileSize, tileSize);
+        context.moveTo(tileSize, 0);
+        context.lineTo(tileSize, tileSize);
         context.stroke();
         gridTexture.refresh();
 
         // Create a tiling sprite using the new texture
         const background = this.add.tileSprite(0, 0, screenWidth, screenHeight, 'grid');
         background.setOrigin(0, 0);
-        background.setScrollFactor(0); // The tileSprite will be moved manually
+        background.setScrollFactor(0);
         background.setDepth(-1000);
 
         // We'll update the tilePosition in the update loop to match the camera
@@ -1254,20 +1331,35 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         this.qSkillUI = this.add.container(startX, skillY).setScrollFactor(0).setDepth(1000)
             .setInteractive(new Phaser.Geom.Rectangle(-25, -25, 50, 50), Phaser.Geom.Rectangle.Contains)
             .on('pointerover', () => this.showSkillTooltip('Q'))
-            .on('pointerout', () => this.hideTooltip());
+            .on('pointerout', () => this.hideTooltip())
+            .on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                if (pointer.rightButtonDown() && this.player instanceof MagePlayer) {
+                    (this.player as MagePlayer).toggleAutoQ();
+                    this.updateAutocastIndicator();
+                }
+            });
         const qBg = this.add.rectangle(0, 0, 50, 50, 0x333333);
-        const qText = this.add.text(0, 0, 'Q', { 
-            fontSize: '24px', 
+        const qText = this.add.text(0, 0, 'Q', {
+            fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff' 
+            color: '#ffffff'
         }).setOrigin(0.5);
         const qCooldownOverlay = this.add.rectangle(0, 0, 50, 50, 0x666666, 0.8);
-        const qCooldownText = this.add.text(0, 20, '', { 
-            fontSize: '14px', 
+        const qCooldownText = this.add.text(0, 20, '', {
+            fontSize: '14px',
             fontFamily: 'Helvetica, Arial, sans-serif',
-            color: '#ffffff' 
+            color: '#ffffff'
         }).setOrigin(0.5);
-        this.qSkillUI.add([qBg, qText, qCooldownOverlay, qCooldownText]);
+        // Auto-cast indicator (mage only)
+        this.autocastIndicator = this.add.text(0, -30, 'AUTO', {
+            fontSize: '10px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#00ff00',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
+        this.autocastIndicator.setVisible(this.player instanceof MagePlayer);
+        this.qSkillUI.add([qBg, qText, qCooldownOverlay, qCooldownText, this.autocastIndicator]);
         startX += skillSpacing;
         
         // E Skill UI
@@ -1595,12 +1687,13 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         this.hideTooltip();
         // Stop the game
         this.scene.pause();
-        
+
         // Show game over screen in UI
         this.scene.launch('UIScene', {
             level: this.playerLevel,
             upgradeManager: this.upgradeManager,
-            isGameOver: true
+            isGameOver: true,
+            stats: this.getGameStats()
         });
     }
     
@@ -1694,6 +1787,31 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         const px = this.player.getX();
         const py = this.player.getY();
 
+        // Draw terrain (water pools as blue, trees as dark green)
+        if (this.obstacleManager) {
+            this.obstacleManager.getWaterPools().getChildren().forEach((pool: any) => {
+                if (!pool.active) return;
+                const dx = (pool.x - px) * scale;
+                const dy = (pool.y - py) * scale;
+                if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                    const r = Math.max(4, (pool.getRadius() || 100) * scale);
+                    this.minimapGraphics.fillStyle(0x2266aa, 0.5);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, r);
+                }
+            });
+
+            this.obstacleManager.getTrees().getChildren().forEach((tree: any) => {
+                if (!tree.active) return;
+                const dx = (tree.x - px) * scale;
+                const dy = (tree.y - py) * scale;
+                if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                    const r = Math.max(3, (tree.getRadius() || 60) * scale);
+                    this.minimapGraphics.fillStyle(0x1a5c1a, 0.6);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, r);
+                }
+            });
+        }
+
         // Draw enemies as red dots
         this.enemies.getChildren().forEach((enemy: any) => {
             const dx = (enemy.x - px) * scale;
@@ -1704,29 +1822,40 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                 const isElite = enemy.isEliteEnemy && enemy.isEliteEnemy();
                 if (isBoss) {
                     this.minimapGraphics.fillStyle(0xff0000, 1);
-                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 4);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 6);
                 } else if (isElite) {
                     this.minimapGraphics.fillStyle(0xffd700, 0.9);
-                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 2.5);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 4);
                 } else {
                     this.minimapGraphics.fillStyle(0xff4444, 0.7);
-                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 1.5);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 3);
                 }
             }
         });
 
-        // Draw items as yellow dots
+        // Draw items as yellow squares (5x5)
         this.items.getChildren().forEach((item: any) => {
             const dx = (item.x - px) * scale;
             const dy = (item.y - py) * scale;
             if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
                 this.minimapGraphics.fillStyle(0xffd700, 0.8);
-                this.minimapGraphics.fillRect(centerX + dx - 1.5, centerY + dy - 1.5, 3, 3);
+                this.minimapGraphics.fillRect(centerX + dx - 2.5, centerY + dy - 2.5, 5, 5);
             }
         });
 
-        // Draw shrines as cyan diamonds
+        // Draw chests as golden brown squares (5x5)
         if (this.obstacleManager) {
+            this.obstacleManager.getCrates().getChildren().forEach((crate: any) => {
+                if (!crate.active) return;
+                const dx = (crate.x - px) * scale;
+                const dy = (crate.y - py) * scale;
+                if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                    this.minimapGraphics.fillStyle(0xcc8844, 0.8);
+                    this.minimapGraphics.fillRect(centerX + dx - 2.5, centerY + dy - 2.5, 5, 5);
+                }
+            });
+
+            // Draw shrines as cyan diamonds
             this.obstacleManager.getShrines().getChildren().forEach((shrine: any) => {
                 if (!shrine.active) return;
                 const dx = (shrine.x - px) * scale;
@@ -1741,9 +1870,9 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
             });
         }
 
-        // Draw player as green dot in center
+        // Draw player as green dot in center (size 5)
         this.minimapGraphics.fillStyle(0x00ff00, 1);
-        this.minimapGraphics.fillCircle(centerX, centerY, 3);
+        this.minimapGraphics.fillCircle(centerX, centerY, 5);
     }
 
     private createBossIndicator() {

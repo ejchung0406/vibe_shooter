@@ -200,6 +200,9 @@ export class EnemySpawner {
 
         this.updateWaveDisplay();
 
+        // Track highest wave
+        this.scene.updateHighestWave(this.waveNumber);
+
         // Check for boss spawn
         if (this.waveNumber === 3 || (this.waveNumber > 3 && (this.waveNumber - 3) % 2 === 0)) {
             this.spawnBoss();

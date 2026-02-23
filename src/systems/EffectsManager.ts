@@ -30,15 +30,17 @@ export class EffectsManager {
         });
     }
 
-    public onEnemyKilled(isBoss: boolean) {
+    public onEnemyKilled(isBoss: boolean, isElite: boolean = false) {
         this.killStreak++;
         this.killStreakTimer = 0;
 
         if (isBoss) {
             this.screenShake(10, 300);
-        } else {
-            this.screenShake(4, 100);
+            this.slowMotion(0.3, 600);
+        } else if (isElite) {
+            this.screenShake(6, 150);
         }
+        // No shake on normal enemy kills
 
         // Streak thresholds
         if (this.killStreak === 5) {
@@ -92,11 +94,11 @@ export class EffectsManager {
     }
 
     public createEnhancedDeathEffect(x: number, y: number, color: number, isBoss: boolean) {
-        const particleCount = isBoss ? 24 : 10;
-        const radius = isBoss ? 40 : 20;
+        const particleCount = isBoss ? 40 : 10;
+        const radius = isBoss ? 60 : 20;
 
         // White flash
-        const flash = this.scene.add.circle(x, y, isBoss ? 60 : 20, 0xffffff, 0.8);
+        const flash = this.scene.add.circle(x, y, isBoss ? 100 : 20, 0xffffff, 0.8);
         this.scene.tweens.add({
             targets: flash,
             alpha: 0,
@@ -105,6 +107,21 @@ export class EffectsManager {
             duration: 200,
             onComplete: () => flash.destroy()
         });
+
+        // Boss: orange shockwave ring
+        if (isBoss) {
+            const ring = this.scene.add.circle(x, y, 20, 0xff8800, 0);
+            ring.setStrokeStyle(4, 0xff8800, 0.8);
+            this.scene.tweens.add({
+                targets: ring,
+                scaleX: 6,
+                scaleY: 6,
+                alpha: 0,
+                duration: 600,
+                ease: 'Power2',
+                onComplete: () => ring.destroy()
+            });
+        }
 
         // Colored fragments
         for (let i = 0; i < particleCount; i++) {

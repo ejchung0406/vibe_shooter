@@ -271,44 +271,119 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
 
     public takeDamage(damage: number, isCritical: boolean = false) {
         this.health -= damage;
-        
+
+        // Track damage dealt
+        try {
+            const gameScene = this.scene as GameSceneInterface;
+            if (gameScene.addDamageDealt) {
+                gameScene.addDamageDealt(damage);
+            }
+        } catch (_e) { /* not ready */ }
+
         // Show damage text
-        this.showDamageText(damage, isCritical);
+        this.showDamageText(damage, isCritical, false);
 
         // Blink effect
         const originalColor = this.getEnemyColor();
-        this.sprite.setFillStyle(0xffffff, 1); // White, Opaque
+        this.sprite.setFillStyle(0xffffff, 1);
         this.scene.time.delayedCall(50, () => {
             if (this.active && this.sprite) {
-                this.sprite.setFillStyle(originalColor, 1); // Original Color, Opaque
+                this.sprite.setFillStyle(originalColor, 1);
             }
         });
-        
+
         if (this.health <= 0) {
             this.die();
         }
     }
 
-    private showDamageText(damage: number, isCritical: boolean) {
-        const fontSize = isCritical ? '44px' : '28px';
-        const color = isCritical ? '#ff0000' : '#ffff00';
+    public takeDotDamage(damage: number) {
+        this.health -= damage;
 
-        const damageText = this.scene.add.text(this.x, this.y - 30, Math.round(damage).toString(), {
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            fontSize: fontSize,
-            color: color,
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        // Animate damage text
-        this.scene.tweens.add({
-            targets: damageText,
-            y: damageText.y - 40,
-            alpha: 0,
-            duration: 1000,
-            ease: 'Power2',
-            onComplete: () => damageText.destroy()
-        });
+        // Track damage dealt
+        try {
+            const gameScene = this.scene as GameSceneInterface;
+            if (gameScene.addDamageDealt) {
+                gameScene.addDamageDealt(damage);
+            }
+        } catch (_e) { /* not ready */ }
+
+        this.showDamageText(damage, false, true);
+
+        if (this.health <= 0) {
+            this.die();
+        }
+    }
+
+    private showDamageText(damage: number, isCritical: boolean, isDot: boolean = false) {
+        const offsetX = (Math.random() - 0.5) * 20;
+
+        if (isCritical) {
+            // Crit: red, 36px, bounce-scale animation, black stroke
+            const damageText = this.scene.add.text(this.x + offsetX, this.y - 30, Math.round(damage).toString(), {
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                fontSize: '36px',
+                color: '#ff2222',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 3
+            }).setOrigin(0.5).setScale(0.3);
+
+            // Bounce-scale: 0.3 -> 1.4 -> 1.0
+            this.scene.tweens.add({
+                targets: damageText,
+                scaleX: 1.4,
+                scaleY: 1.4,
+                duration: 150,
+                ease: 'Back.easeOut',
+                onComplete: () => {
+                    this.scene.tweens.add({
+                        targets: damageText,
+                        scaleX: 1.0,
+                        scaleY: 1.0,
+                        y: damageText.y - 40,
+                        alpha: 0,
+                        duration: 800,
+                        ease: 'Power2',
+                        onComplete: () => damageText.destroy()
+                    });
+                }
+            });
+        } else if (isDot) {
+            // DOT: orange, 18px, gentle short float
+            const damageText = this.scene.add.text(this.x + offsetX, this.y - 25, Math.round(damage).toString(), {
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                fontSize: '18px',
+                color: '#ff8844',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            this.scene.tweens.add({
+                targets: damageText,
+                y: damageText.y - 20,
+                alpha: 0,
+                duration: 600,
+                ease: 'Power1',
+                onComplete: () => damageText.destroy()
+            });
+        } else {
+            // Normal: yellow, 28px, standard float
+            const damageText = this.scene.add.text(this.x + offsetX, this.y - 30, Math.round(damage).toString(), {
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                fontSize: '28px',
+                color: '#ffff00',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            this.scene.tweens.add({
+                targets: damageText,
+                y: damageText.y - 40,
+                alpha: 0,
+                duration: 1000,
+                ease: 'Power2',
+                onComplete: () => damageText.destroy()
+            });
+        }
     }
 
     public die() {
@@ -340,11 +415,18 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             enemySpawner.onEnemyKilled();
         }
 
+        // Track kill
+        try {
+            if (gameScene.addKill) {
+                gameScene.addKill();
+            }
+        } catch (_e) { /* not ready */ }
+
         // Effects manager: screen shake + kill streak
         try {
             const effectsManager = gameScene.getEffectsManager();
             if (effectsManager) {
-                effectsManager.onEnemyKilled(this.isBoss);
+                effectsManager.onEnemyKilled(this.isBoss, this.isElite);
                 effectsManager.createEnhancedDeathEffect(this.x, this.y, this.getEnemyColor(), this.isBoss);
             }
         } catch (_e) { /* effects manager not ready */ }
@@ -402,7 +484,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             
             // Apply damage every 0.5 seconds
             if (this.bleedTickTimer >= this.bleedTickInterval) {
-                this.takeDamage(this.bleedDamage * (this.bleedTickInterval / 1000));
+                this.takeDotDamage(this.bleedDamage * (this.bleedTickInterval / 1000));
                 this.bleedTickTimer = 0;
             }
             

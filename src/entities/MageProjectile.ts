@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { MagePlayer } from './MagePlayer';
 
 export class MageProjectile extends Phaser.GameObjects.Container {
     private sprite!: Phaser.GameObjects.Rectangle;
@@ -144,6 +145,15 @@ export class MageProjectile extends Phaser.GameObjects.Container {
         this.hitEnemies.add(enemy);
 
         enemy.takeDamage(this.damage, this.isCritical);
+
+        // Trigger chain lightning on hit if player has attackCastsQ upgrade
+        try {
+            const gameScene = this.scene as GameSceneInterface;
+            const player = gameScene.getPlayer();
+            if (player instanceof MagePlayer && player.hasAttackCastsQ()) {
+                player.castChainLightningAt(enemy.x, enemy.y);
+            }
+        } catch (_e) { /* not ready */ }
 
         const dx = enemy.x - this.x;
         const dy = enemy.y - this.y;

@@ -111,6 +111,14 @@ export const ko: Record<string, string> = {
     'stats.mana': '마나: {current}/{max}',
     'stats.lightning_dmg': '번개 데미지: {value}%',
 
+    // End-game stats
+    'stats.end_title': '게임 통계',
+    'stats.end_time': '생존 시간',
+    'stats.end_wave': '최고 웨이브',
+    'stats.end_kills': '총 처치 수',
+    'stats.end_damage': '총 데미지',
+    'stats.end_items': '수집 아이템',
+
     // GameScene popups
     'popup.item_obtained': '아이템 획득!',
     'popup.item_level_up': '아이템 레벨 업!',
@@ -314,7 +322,7 @@ export const ko: Record<string, string> = {
     'upgrade.mage_meteor_1.name': '유성우',
     'upgrade.mage_meteor_1.desc': '유성 충돌 +3',
     'upgrade.mage_meteor_2.name': '대재앙',
-    'upgrade.mage_meteor_2.desc': '유성이 불타는 땅을 남깁니다 (3초 지속 피해)',
+    'upgrade.mage_meteor_2.desc': '불타는 땅 데미지, 지속시간, 범위 +80%',
     'upgrade.mage_lightning_power_1.name': '번개 강타',
     'upgrade.mage_lightning_power_1.desc': '연쇄 번개 데미지 +50%',
     'upgrade.mage_lightning_power_2.name': '폭풍',
@@ -327,6 +335,10 @@ export const ko: Record<string, string> = {
     'upgrade.mage_mana_regen_1.desc': '초당 마나 재생 +3',
     'upgrade.mage_mana_efficiency.name': '마법 효율',
     'upgrade.mage_mana_efficiency.desc': '마나 소모 25% 감소',
+    'upgrade.mage_teleport_lightning.name': '번개 블링크',
+    'upgrade.mage_teleport_lightning.desc': '순간이동 시 도착 지점에서 체인 라이트닝 발동',
+    'upgrade.mage_attack_lightning.name': '정전기 방출',
+    'upgrade.mage_attack_lightning.desc': '평타 적중 시 체인 라이트닝 발동',
 
     // Item names & descriptions
     'item.basic_sword.name': '기본 검',
@@ -369,4 +381,30 @@ export const ko: Record<string, string> = {
     'item.mana_prism.desc': '최대 마나 +100, 마나 재생 +3/초',
     'item.thunderlords_decree.name': '번개군주의 칙령',
     'item.thunderlords_decree.desc': '최대 마나 +80, 공격력 +50%, 공격 속도 +25%',
+
+    // Skill tooltips - Ranged
+    'skill.q.ranged': '유도 투사체를 발사하여 근처 적을 공격합니다.',
+    'skill.e.ranged': '들어오는 피해를 막는 보호막을 생성합니다.',
+    'skill.r.ranged': '강력한 폭발 투사체를 발사합니다.',
+    'skill.f.ranged': '따라다니며 적을 공격하는 펫을 소환합니다.',
+    'skill.dash.ranged': '마우스 방향으로 빠르게 대시합니다.',
+
+    // Skill tooltips - Melee
+    'skill.q.melee': '주변 모든 적에게 피해를 주는 광역 폭발을 일으킵니다. 가까운 적에게 50% 추가 피해.',
+    'skill.e.melee': '들어오는 피해를 막는 보호막을 생성합니다. 업그레이드 시 회복 가능.',
+    'skill.r.melee': '모든 적에게 피해를 주고 출혈을 적용하는 대규모 광역 공격.',
+    'skill.f.melee': '따라다니며 적을 공격하는 펫을 소환합니다.',
+    'skill.dash.melee': '마우스 방향으로 빠르게 대시합니다.',
+
+    // Skill tooltips - Mage
+    'skill.q.mage': '체인 라이트닝 — 가장 가까운 적을 타격하고 주변 적에게 연쇄됩니다. 쿨타임마다 자동 시전.',
+    'skill.e.mage': '들어오는 피해를 막는 마법 보호막을 생성합니다.',
+    'skill.r.mage': '메테오 스톰 — 커서 주변에 운석을 떨어뜨려 광역 피해를 주고 불타는 땅을 남깁니다.',
+    'skill.f.mage': '따라다니며 적을 공격하는 마법 소환수를 소환합니다.',
+    'skill.dash.mage': '블링크 — 마우스 방향으로 짧은 거리를 순간이동합니다.',
+
+    // Skill misc
+    'skill.damage': '피해량: {value}%',
+    'skill.autocast_on': '[자동 시전: 켜짐]',
+    'skill.autocast_off': '[자동 시전: 꺼짐]',
 };

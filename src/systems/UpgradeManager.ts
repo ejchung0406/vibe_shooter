@@ -1034,14 +1034,14 @@ export class UpgradeManager {
             {
                 id: "mage_meteor_2",
                 name: "Cataclysm",
-                description: "Meteors leave burning ground (3s DOT zone)",
+                description: "Burning ground +80% damage, duration, and area",
                 rarity: "epic",
                 dependencies: ["mage_meteor_1"],
                 requiredSkill: 'R',
                 character: 'mage',
                 effect: (player: BasePlayer) => {
                     if (player instanceof MagePlayer) {
-                        player.setHasBurningGround(true);
+                        player.increaseBurningGroundMultiplier(0.8);
                     }
                 }
             },
@@ -1118,6 +1118,37 @@ export class UpgradeManager {
                 effect: (player: BasePlayer) => {
                     if (player instanceof MagePlayer) {
                         player.setManaCostReduction(0.25);
+                    }
+                }
+            },
+
+            // Teleport triggers chain lightning
+            {
+                id: "mage_teleport_lightning",
+                name: "Lightning Blink",
+                description: "Teleporting triggers Chain Lightning at your destination",
+                rarity: "epic",
+                dependencies: ["mage_chain_1"],
+                requiredSkill: 'DASH',
+                character: 'mage',
+                effect: (player: BasePlayer) => {
+                    if (player instanceof MagePlayer) {
+                        player.setTeleportCastsQ(true);
+                    }
+                }
+            },
+
+            // Basic attacks trigger chain lightning
+            {
+                id: "mage_attack_lightning",
+                name: "Static Discharge",
+                description: "Basic attacks trigger Chain Lightning on hit",
+                rarity: "epic",
+                dependencies: ["mage_lightning_power_1"],
+                character: 'mage',
+                effect: (player: BasePlayer) => {
+                    if (player instanceof MagePlayer) {
+                        player.setAttackCastsQ(true);
                     }
                 }
             }
