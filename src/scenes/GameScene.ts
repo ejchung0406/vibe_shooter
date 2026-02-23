@@ -607,7 +607,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         
         // Health bar (center bottom like LoL)
         const centerX = screenWidth / 2;
-        const bottomY = screenHeight - 60;
+        const bottomY = screenHeight - 80;
         
         this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0).setDepth(1000);
         this.healthBar = this.add.rectangle(centerX, bottomY, 300, 30, 0x00ff00).setScrollFactor(0).setDepth(1001);
@@ -620,15 +620,15 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
         
         // Mana bar (below health bar, only visible for mage)
-        const manaY = bottomY + 22;
-        this.manaBarBg = this.add.rectangle(centerX, manaY, 200, 12, 0x222244).setScrollFactor(0).setDepth(1000);
-        this.manaBar = this.add.rectangle(centerX, manaY, 200, 12, 0x4488ff).setScrollFactor(0).setDepth(1001);
+        const manaY = bottomY + 28;
+        this.manaBarBg = this.add.rectangle(centerX, manaY, 300, 20, 0x222244).setScrollFactor(0).setDepth(1000);
+        this.manaBar = this.add.rectangle(centerX, manaY, 300, 20, 0x4488ff).setScrollFactor(0).setDepth(1001);
         this.manaText = this.add.text(centerX, manaY, '', {
-            fontSize: '14px',
+            fontSize: '18px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 2
+            strokeThickness: 3
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
         // Hide mana bar for non-mage
         const isMage = this.player instanceof MagePlayer;
@@ -700,7 +700,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
             // Update mana bar (for mage)
             if (player.getMaxMana() > 0) {
                 const manaPercent = player.getMana() / player.getMaxMana();
-                this.manaBar.width = 200 * manaPercent;
+                this.manaBar.width = 300 * manaPercent;
                 this.manaText.setText(`${Math.round(player.getMana())}/${Math.round(player.getMaxMana())}`);
             }
         }

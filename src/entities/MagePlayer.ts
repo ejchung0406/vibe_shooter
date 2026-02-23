@@ -18,10 +18,10 @@ export class MagePlayer extends BasePlayer {
     private manaBarFill!: Phaser.GameObjects.Rectangle;
 
     // Mana costs
-    private readonly MANA_COST_Q = 15;
-    private readonly MANA_COST_E = 25;
-    private readonly MANA_COST_R = 40;
-    private readonly MANA_COST_TELEPORT = 10;
+    private readonly MANA_COST_Q = 10;
+    private readonly MANA_COST_E = 20;
+    private readonly MANA_COST_R = 30;
+    private readonly MANA_COST_TELEPORT = 5;
     protected manaCostReduction: number = 0; // 0-1 percentage
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -38,8 +38,8 @@ export class MagePlayer extends BasePlayer {
         this.baseMana = 100;
         this.maxMana = 100;
         this.mana = 100;
-        this.baseManaRegen = 5;
-        this.manaRegen = 5;
+        this.baseManaRegen = 10;
+        this.manaRegen = 10;
 
         // Purple mage colors
         this.bodyColor = 0x7744CC;
@@ -76,7 +76,7 @@ export class MagePlayer extends BasePlayer {
 
     private createManaBar() {
         const barWidth = 30;
-        const barHeight = 3;
+        const barHeight = 4;
         const yPos = -15; // Below health bar at -20
         this.manaBarBg = this.scene.add.rectangle(0, yPos, barWidth, barHeight, 0x222244);
         this.manaBarFill = this.scene.add.rectangle(0, yPos, barWidth, barHeight, 0x4488ff);
@@ -481,8 +481,8 @@ export class MagePlayer extends BasePlayer {
         const targetY = mousePointer.worldY;
 
         for (let i = 0; i < this.meteorCount; i++) {
-            const meteorX = targetX + (Math.random() - 0.5) * 400;
-            const meteorY = targetY + (Math.random() - 0.5) * 400;
+            const meteorX = targetX + (Math.random() - 0.5) * 600;
+            const meteorY = targetY + (Math.random() - 0.5) * 600;
 
             this.scene.time.delayedCall(i * 150, () => {
                 if (!this.active) return;
@@ -515,7 +515,7 @@ export class MagePlayer extends BasePlayer {
     }
 
     private meteorImpact(x: number, y: number, scene: GameSceneInterface) {
-        const impactRadius = 100;
+        const impactRadius = 180;
 
         // Impact visual
         const impact = scene.add.circle(x, y, impactRadius, 0xff4400, 0.6);
@@ -539,7 +539,7 @@ export class MagePlayer extends BasePlayer {
             const dy = enemy.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             if (distance <= impactRadius) {
-                const baseDamage = this.attackDamage * 1.5 * this.spellAmplification;
+                const baseDamage = this.attackDamage * 3.0 * this.spellAmplification;
                 const { damage, isCritical } = this.calculateDamage(baseDamage);
                 enemy.takeDamage(damage, isCritical);
             }
@@ -566,21 +566,30 @@ export class MagePlayer extends BasePlayer {
             });
         }
 
-        // Burning ground (if upgrade)
-        if (this.hasBurningGround) {
-            this.createBurningGround(x, y, scene);
-        }
+        // Burning ground (always active)
+        this.createBurningGround(x, y, scene);
     }
 
     private createBurningGround(x: number, y: number, scene: GameSceneInterface) {
-        const radius = 80;
-        const duration = 3000;
-        const tickInterval = 500;
+        const radius = 150;
+        const duration = 4000;
+        const tickInterval = 400;
 
         const ground = scene.add.graphics();
         ground.fillStyle(0xff4400, 0.3);
         ground.fillCircle(0, 0, radius);
+        ground.lineStyle(2, 0xff6600, 0.4);
+        ground.strokeCircle(0, 0, radius);
         ground.setPosition(x, y);
+
+        // Flickering fire effect
+        scene.tweens.add({
+            targets: ground,
+            alpha: { from: 0.8, to: 0.4 },
+            duration: 300,
+            yoyo: true,
+            repeat: Math.floor(duration / 600)
+        });
 
         let elapsed = 0;
         const timer = scene.time.addEvent({
@@ -593,11 +602,16 @@ export class MagePlayer extends BasePlayer {
                 }
                 const enemies = scene.getEnemies().getChildren();
                 enemies.forEach((enemy: any) => {
+                    if (!enemy.body) return;
                     const ddx = enemy.x - x;
                     const ddy = enemy.y - y;
                     const dist = Math.sqrt(ddx * ddx + ddy * ddy);
                     if (dist <= radius) {
-                        const dotDamage = this.attackDamage * 0.3 * this.spellAmplification;
+                        // % max HP burn — hurts bosses too
+                        const dotDamage = Math.max(
+                            this.attackDamage * 0.5 * this.spellAmplification,
+                            (enemy.getMaxHealth?.() || 0) * 0.02
+                        );
                         enemy.takeDamage(dotDamage, false);
                     }
                 });
