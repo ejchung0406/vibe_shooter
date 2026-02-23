@@ -316,11 +316,15 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     private showDamageText(damage: number, isCritical: boolean, isDot: boolean = false) {
+        // Capture scene reference before enemy might be destroyed
+        const scene = this.scene;
+        if (!scene) return;
+
         const offsetX = (Math.random() - 0.5) * 20;
 
         if (isCritical) {
             // Crit: red, 36px, bounce-scale animation, black stroke
-            const damageText = this.scene.add.text(this.x + offsetX, this.y - 30, Math.round(damage).toString(), {
+            const damageText = scene.add.text(this.x + offsetX, this.y - 30, Math.round(damage).toString(), {
                 fontFamily: 'Helvetica, Arial, sans-serif',
                 fontSize: '36px',
                 color: '#ff2222',
@@ -330,14 +334,15 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             }).setOrigin(0.5).setScale(0.3);
 
             // Bounce-scale: 0.3 -> 1.4 -> 1.0
-            this.scene.tweens.add({
+            scene.tweens.add({
                 targets: damageText,
                 scaleX: 1.4,
                 scaleY: 1.4,
                 duration: 150,
                 ease: 'Back.easeOut',
                 onComplete: () => {
-                    this.scene.tweens.add({
+                    if (!damageText.active) return;
+                    scene.tweens.add({
                         targets: damageText,
                         scaleX: 1.0,
                         scaleY: 1.0,
@@ -351,14 +356,14 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             });
         } else if (isDot) {
             // DOT: orange, 18px, gentle short float
-            const damageText = this.scene.add.text(this.x + offsetX, this.y - 25, Math.round(damage).toString(), {
+            const damageText = scene.add.text(this.x + offsetX, this.y - 25, Math.round(damage).toString(), {
                 fontFamily: 'Helvetica, Arial, sans-serif',
                 fontSize: '18px',
                 color: '#ff8844',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            this.scene.tweens.add({
+            scene.tweens.add({
                 targets: damageText,
                 y: damageText.y - 20,
                 alpha: 0,
@@ -368,14 +373,14 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             });
         } else {
             // Normal: yellow, 28px, standard float
-            const damageText = this.scene.add.text(this.x + offsetX, this.y - 30, Math.round(damage).toString(), {
+            const damageText = scene.add.text(this.x + offsetX, this.y - 30, Math.round(damage).toString(), {
                 fontFamily: 'Helvetica, Arial, sans-serif',
                 fontSize: '28px',
                 color: '#ffff00',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            this.scene.tweens.add({
+            scene.tweens.add({
                 targets: damageText,
                 y: damageText.y - 40,
                 alpha: 0,
