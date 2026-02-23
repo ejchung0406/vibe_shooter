@@ -592,6 +592,9 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
             if (this.dashTimer >= this.dashDuration) {
                 this.isDashing = false;
                 this.dashTimer = 0;
+                // Keep invulnerability for a short grace period after dash
+                this.isInvulnerable = true;
+                this.invulnerabilityTimer = 0;
                 // Stop dash movement
                 const body = this.body as Phaser.Physics.Arcade.Body;
                 if (body) {
@@ -1123,7 +1126,11 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         this.startCooldown('dash');
         this.isDashing = true;
         this.dashTimer = 0;
-        
+
+        // Grant invulnerability during dash
+        this.isInvulnerable = true;
+        this.invulnerabilityTimer = 0;
+
         // Create trail graphics if not exists
         this.createDashTrail();
         

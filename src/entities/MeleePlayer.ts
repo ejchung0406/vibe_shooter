@@ -144,30 +144,134 @@ export class MeleePlayer extends BasePlayer {
         });
 
         const gameScene = this.scene as GameSceneInterface;
-
         const radius = 400;
+        const cx = this.x;
+        const cy = this.y;
 
-        // Create a visual effect for the AoE
-        const ring = gameScene.add.graphics();
-        ring.lineStyle(10, 0xff0000, 0.5);
-        ring.strokeCircle(this.x, this.y, radius);
-        gameScene.tweens.add({
-            targets: ring,
-            alpha: 0,
-            duration: 500,
-            onComplete: () => {
-                ring.destroy();
+        // === Phase 1: Ground crack lines radiating outward ===
+        const crackGraphics = gameScene.add.graphics();
+        crackGraphics.setDepth(this.depth - 1);
+        const crackCount = 12;
+        for (let i = 0; i < crackCount; i++) {
+            const angle = (Math.PI * 2 / crackCount) * i + (Math.random() - 0.5) * 0.3;
+            const len = radius * (0.6 + Math.random() * 0.4);
+            crackGraphics.lineStyle(3, 0xff4400, 0.8);
+            crackGraphics.beginPath();
+            crackGraphics.moveTo(cx, cy);
+            // Jagged segments
+            let px = cx, py = cy;
+            const segments = 4 + Math.floor(Math.random() * 3);
+            for (let s = 1; s <= segments; s++) {
+                const t = s / segments;
+                const jitter = 15 * (1 - t);
+                px = cx + Math.cos(angle) * len * t + (Math.random() - 0.5) * jitter;
+                py = cy + Math.sin(angle) * len * t + (Math.random() - 0.5) * jitter;
+                crackGraphics.lineTo(px, py);
             }
+            crackGraphics.strokePath();
+        }
+        gameScene.tweens.add({
+            targets: crackGraphics,
+            alpha: 0,
+            duration: 800,
+            delay: 200,
+            onComplete: () => crackGraphics.destroy()
+        });
+
+        // === Phase 2: Expanding shockwave rings ===
+        const ringColors = [0xff2200, 0xff6600, 0xff0000];
+        ringColors.forEach((color, i) => {
+            const ring = gameScene.add.graphics();
+            ring.setDepth(this.depth + 1);
+            const startRadius = 20;
+            const ringObj = { r: startRadius, a: 0.9 };
+            gameScene.tweens.add({
+                targets: ringObj,
+                r: radius * (0.8 + i * 0.15),
+                a: 0,
+                duration: 400 + i * 100,
+                delay: i * 80,
+                ease: 'Cubic.easeOut',
+                onUpdate: () => {
+                    ring.clear();
+                    ring.lineStyle(6 - i * 1.5, color, ringObj.a);
+                    ring.strokeCircle(cx, cy, ringObj.r);
+                },
+                onComplete: () => ring.destroy()
+            });
+        });
+
+        // === Phase 3: Inner fire burst fill ===
+        const burstFill = gameScene.add.graphics();
+        burstFill.setDepth(this.depth);
+        const burstObj = { r: 0, a: 0.5 };
+        gameScene.tweens.add({
+            targets: burstObj,
+            r: radius,
+            a: 0,
+            duration: 350,
+            ease: 'Cubic.easeOut',
+            onUpdate: () => {
+                burstFill.clear();
+                burstFill.fillStyle(0xff3300, burstObj.a * 0.4);
+                burstFill.fillCircle(cx, cy, burstObj.r);
+                burstFill.fillStyle(0xff6600, burstObj.a * 0.6);
+                burstFill.fillCircle(cx, cy, burstObj.r * 0.6);
+                burstFill.fillStyle(0xffaa00, burstObj.a * 0.8);
+                burstFill.fillCircle(cx, cy, burstObj.r * 0.25);
+            },
+            onComplete: () => burstFill.destroy()
+        });
+
+        // === Phase 4: Spark particles flying outward ===
+        const sparkCount = 24;
+        for (let i = 0; i < sparkCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 200 + Math.random() * 400;
+            const sparkSize = 3 + Math.random() * 5;
+            const sparkColor = [0xff4400, 0xff8800, 0xffcc00, 0xffffff][Math.floor(Math.random() * 4)];
+            const spark = gameScene.add.graphics();
+            spark.setDepth(this.depth + 2);
+            spark.fillStyle(sparkColor, 1);
+            spark.fillCircle(0, 0, sparkSize);
+            spark.setPosition(cx, cy);
+
+            const destX = cx + Math.cos(angle) * speed;
+            const destY = cy + Math.sin(angle) * speed;
+            gameScene.tweens.add({
+                targets: spark,
+                x: destX,
+                y: destY,
+                alpha: 0,
+                scaleX: 0.2,
+                scaleY: 0.2,
+                duration: 300 + Math.random() * 400,
+                ease: 'Cubic.easeOut',
+                onComplete: () => spark.destroy()
+            });
+        }
+
+        // === Phase 5: Screen shake ===
+        gameScene.cameras.main.shake(300, 0.012);
+
+        // === Phase 6: Brief white flash overlay ===
+        const flash = gameScene.add.rectangle(cx, cy, radius * 2.5, radius * 2.5, 0xffffff, 0.3);
+        flash.setDepth(this.depth + 3);
+        gameScene.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 200,
+            onComplete: () => flash.destroy()
         });
 
         // Damage and apply bleed to enemies in the AoE
         const enemies = gameScene.getEnemies().getChildren();
         enemies.forEach((enemy: any) => {
-            const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+            const distance = Phaser.Math.Distance.Between(cx, cy, enemy.x, enemy.y);
             if (distance < radius) {
                 const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                 enemy.takeDamage(damage, isCritical);
-                enemy.applyBleed(10000, enemy.getMaxHealth() * this.rSkillBleedingDamage); // Use configurable bleeding damage
+                enemy.applyBleed(10000, enemy.getMaxHealth() * this.rSkillBleedingDamage);
             }
         });
     }
