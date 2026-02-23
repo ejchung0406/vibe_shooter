@@ -3,6 +3,7 @@ import { StartScene } from './scenes/StartScene';
 import { CharacterSelectionScene } from './scenes/CharacterSelectionScene';
 import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
+import { TutorialScene } from './scenes/TutorialScene';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -13,11 +14,11 @@ const config: Phaser.Types.Core.GameConfig = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 0 },
+            gravity: { x: 0, y: 0 },
             debug: false
         }
     },
-    scene: [StartScene, CharacterSelectionScene, GameScene, UIScene],
+    scene: [StartScene, CharacterSelectionScene, GameScene, UIScene, TutorialScene],
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,

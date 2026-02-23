@@ -2,20 +2,22 @@ import Phaser from 'phaser';
 import { BasePlayer } from '../entities/BasePlayer';
 import { RangedPlayer } from '../entities/RangedPlayer';
 import { MeleePlayer } from '../entities/MeleePlayer';
-import { TankEnemy } from '../entities/TankEnemy';
-import { RangedEnemy } from '../entities/RangedEnemy';
-import { Projectile } from '../entities/Projectile';
+import { MagePlayer } from '../entities/MagePlayer';
 import { UpgradeManager } from '../systems/UpgradeManager';
 import { EnemySpawner } from '../systems/EnemySpawner';
 import { SKILL_UNLOCK_LEVELS } from '../entities/BasePlayer';
 import { Pet } from '../entities/Pet';
 import { ItemManager } from '../systems/ItemManager';
-import { Item, ItemData } from '../entities/Item';
-import { SkillManager, SkillData } from '../systems/SkillManager';
+import { Item, ItemData, StatModifier } from '../entities/Item';
+import { BaseEnemy } from '../entities/BaseEnemy';
+import { SkillManager } from '../systems/SkillManager';
+import { EffectsManager } from '../systems/EffectsManager';
+import { ObstacleManager } from '../systems/ObstacleManager';
+import { SynergyManager } from '../systems/SynergyManager';
+import { GameSceneInterface } from '../types/GameSceneInterface';
+import { t } from '../i18n/i18n';
 
-const BASE_MAX_HEALTH_BAR_WIDTH = 300; // The width of the health bar for a player with 100 max health
-
-export class GameScene extends Phaser.Scene {
+export class GameScene extends Phaser.Scene implements GameSceneInterface {
     private player!: BasePlayer;
     private enemies!: Phaser.GameObjects.Group;
     private projectiles!: Phaser.GameObjects.Group;
@@ -26,13 +28,17 @@ export class GameScene extends Phaser.Scene {
     private enemySpawner!: EnemySpawner;
     private itemManager!: ItemManager;
     private skillManager!: SkillManager;
+    private effectsManager!: EffectsManager;
+    private obstacleManager!: ObstacleManager;
+    private synergyManager!: SynergyManager;
     private tooltip!: Phaser.GameObjects.Container;
-    
+    private character: string = 'ranged';
+
     // Game state
     private gameTime: number = 0;
     private playerLevel: number = 1;
     private playerXP: number = 0;
-    private xpToNextLevel: number = 100;
+    private xpToNextLevel: number = 200;
     private bossesDefeated: number = 0;
     
     // UI elements
@@ -40,7 +46,6 @@ export class GameScene extends Phaser.Scene {
     private xpText!: Phaser.GameObjects.Text;
     private timeText!: Phaser.GameObjects.Text;
     private healthBar!: Phaser.GameObjects.Rectangle;
-    private healthBarBg!: Phaser.GameObjects.Rectangle;
     private healthText!: Phaser.GameObjects.Text;
     private xpBar!: Phaser.GameObjects.Rectangle;
     private qSkillUI!: Phaser.GameObjects.Container;
@@ -49,6 +54,9 @@ export class GameScene extends Phaser.Scene {
     private rSkillUI!: Phaser.GameObjects.Container;
     private fSkillUI!: Phaser.GameObjects.Container;
     private itemContainers: Phaser.GameObjects.Container[] = [];
+    private manaBar!: Phaser.GameObjects.Rectangle;
+    private manaBarBg!: Phaser.GameObjects.Rectangle;
+    private manaText!: Phaser.GameObjects.Text;
     
     // Character stats UI
     private statsContainer!: Phaser.GameObjects.Container;
@@ -65,8 +73,14 @@ export class GameScene extends Phaser.Scene {
     
     // Wave counter UI
     private waveText!: Phaser.GameObjects.Text;
+    private streakText!: Phaser.GameObjects.Text;
     private pauseContainer!: Phaser.GameObjects.Container;
     private bossIndicator!: Phaser.GameObjects.Image;
+
+    // Minimap
+    private minimapGraphics!: Phaser.GameObjects.Graphics;
+    private readonly MINIMAP_SIZE = 280;
+    private readonly MINIMAP_RANGE = 1500; // World units shown on minimap
 
     constructor() {
         super({ key: 'GameScene' });
@@ -98,6 +112,8 @@ export class GameScene extends Phaser.Scene {
         this.enemySpawner = new EnemySpawner(this);
         this.itemManager = new ItemManager();
         this.skillManager = new SkillManager();
+        this.effectsManager = new EffectsManager(this);
+        this.synergyManager = new SynergyManager(this);
         
         // Create groups
         this.enemies = this.add.group();
@@ -112,6 +128,8 @@ export class GameScene extends Phaser.Scene {
         // Create player at center of the world (0,0)
         if (this.character === 'melee') {
             this.player = new MeleePlayer(this, 0, 0);
+        } else if (this.character === 'mage') {
+            this.player = new MagePlayer(this, 0, 0);
         } else {
             this.player = new RangedPlayer(this, 0, 0);
         }
@@ -119,6 +137,11 @@ export class GameScene extends Phaser.Scene {
         this.player.recalculateStats(); // Ensure stats are correctly applied before UI setup
         
         this.physics.add.overlap(this.player, this.items, this.handleItemPickup, undefined, this);
+
+        // Projectiles pass through loot items (no interaction)
+
+        // Initialize obstacle manager (after player creation)
+        this.obstacleManager = new ObstacleManager(this as unknown as Phaser.Scene & GameSceneInterface);
 
         // Setup camera
         this.setupCamera();
@@ -205,6 +228,12 @@ export class GameScene extends Phaser.Scene {
         // Check for level up
         this.checkLevelUp();
         this.updateBossIndicator();
+
+        // Update new systems
+        this.effectsManager.update(delta);
+        this.obstacleManager.update(delta);
+        this.updateStreakDisplay();
+        this.updateMinimap();
     }
 
     public onBossDefeated() {
@@ -234,8 +263,8 @@ export class GameScene extends Phaser.Scene {
 
         if (itemData) {
             const player = this.getPlayer();
-            const spawnX = player.x + Phaser.Math.Between(-100, 100);
-            const spawnY = player.y + Phaser.Math.Between(-100, 100);
+            const spawnX = player.x + Phaser.Math.Between(-400, 400);
+            const spawnY = player.y + Phaser.Math.Between(-400, 400);
             const item = new Item(this, spawnX, spawnY, itemData);
             this.addItem(item);
         }
@@ -248,9 +277,15 @@ export class GameScene extends Phaser.Scene {
     }
 
     private handleItemPickup(player: any, item: any) {
-        console.log('Item picked up:', item.getItemData().name); // Debug log
-        player.addItem(item.getItemData());
-        this.showItemCollectedPopup(item.getItemData());
+        const itemData = item.getItemData();
+        const leveledUp = player.addItem(itemData);
+        if (leveledUp) {
+            // Find the leveled-up item for current level
+            const existing = player.getItems().find((i: ItemData) => i.id === itemData.id);
+            this.showItemLevelUpPopup(existing || itemData);
+        } else {
+            this.showItemCollectedPopup(itemData);
+        }
         this.updateItemUI();
         item.destroy();
     }
@@ -259,7 +294,7 @@ export class GameScene extends Phaser.Scene {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        const message = this.add.text(screenWidth / 2, screenHeight / 2, 'Boss Cleared! Take the item.', {
+        const message = this.add.text(screenWidth / 2, screenHeight / 2, t('popup.boss_cleared'), {
             fontSize: '48px',
             color: '#00ff00',
             fontStyle: 'bold',
@@ -280,13 +315,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     public showItemTooltip(x: number, y: number, itemData: ItemData) {
-        const text = `${itemData.name}\n${itemData.description}`;
-        this.showSmartTooltip(x, y, text, false);
+        this.showItemRichTooltip(x, y, itemData, false);
     }
 
     public hideTooltip() {
         if (this.tooltip) {
             this.tooltip.destroy();
+            this.tooltip = null as any;
         }
     }
 
@@ -324,10 +359,193 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    private getStatLabel(stat: string): string {
+        const labels: Record<string, string> = {
+            bonusAttackDamage: t('stats.damage', { value: '' }).replace(': ', '').trim(),
+            attackDamageMultiplier: t('stats.damage', { value: '' }).replace(': ', '').trim(),
+            attackSpeed: t('stats.attack_speed', { value: '' }).replace(': /s', '').trim(),
+            projectileSpeed: 'Projectile Speed',
+            criticalStrikeDamage: t('stats.crit_damage', { value: '' }).replace(': %', '').trim(),
+            criticalStrikeChance: t('stats.crit_chance', { value: '' }).replace(': %', '').trim(),
+            maxHealth: 'Max HP',
+            moveSpeed: t('stats.move_speed', { value: '' }).replace(': ', '').trim(),
+            projectileCount: t('stats.projectiles', { value: '' }).replace(': ', '').trim(),
+            healthRegen: 'HP Regen',
+            lifeSteal: 'Life Steal',
+            hasAegis: 'Aegis',
+            armor: t('stats.armor', { armor: '', reduction: '' }).replace(': ', '').replace(' (%)', '').trim(),
+            maxMana: 'Max Mana',
+            manaRegen: 'Mana Regen',
+        };
+        return labels[stat] || stat;
+    }
+
+    private formatModifier(mod: StatModifier): string {
+        const label = this.getStatLabel(mod.stat);
+        if (mod.stat === 'attackDamageMultiplier') {
+            return `${label} x${(1 + mod.value).toFixed(1)}`;
+        }
+        if (mod.stat === 'attackSpeed' || mod.stat === 'moveSpeed') {
+            const pct = mod.value > 0 ? `+${Math.round(mod.value * 100)}%` : `${Math.round(mod.value * 100)}%`;
+            return `${label} ${pct}`;
+        }
+        if (mod.stat === 'criticalStrikeChance') {
+            return `${label} +${Math.round(mod.value * 100)}%`;
+        }
+        if (mod.stat === 'criticalStrikeDamage') {
+            return `${label} +${Math.round(mod.value * 100)}%`;
+        }
+        if (mod.stat === 'lifeSteal' || mod.stat === 'healthRegen') {
+            return `${label} ${Math.round(mod.value * 100)}%`;
+        }
+        if (mod.stat === 'hasAegis') {
+            return label;
+        }
+        const sign = mod.value >= 0 ? '+' : '';
+        return `${label} ${sign}${mod.value}`;
+    }
+
+    private showItemRichTooltip(x: number, y: number, itemData: ItemData, isUI: boolean, extraLine?: string) {
+        this.hideTooltip();
+
+        const itemName = t(`item.${itemData.id}.name`);
+        const levelStr = (itemData.level && itemData.level > 1) ? ` (Lv.${itemData.level})` : '';
+
+        const rarityColors: Record<string, string> = {
+            common: '#ffffff',
+            rare: '#4da6ff',
+            epic: '#9966ff',
+            legendary: '#ff6600'
+        };
+        const nameColor = itemData.isCursed ? '#ff4444' : (rarityColors[itemData.rarity] || '#ffffff');
+
+        // Build layout inside a container
+        const container = this.add.container(x, y);
+        container.setDepth(5000);
+
+        // Background - we'll size it after measuring content
+        const bg = this.add.rectangle(0, 0, 10, 10, 0x111111, 0.95);
+        bg.setStrokeStyle(2, itemData.isCursed ? 0xff4444 : 0x444444);
+        bg.setOrigin(0, 1);
+        container.add(bg);
+
+        // Icon
+        const iconGraphics = this.add.graphics();
+        Item.drawItemIcon(iconGraphics, itemData.id, 1.2);
+        container.add(iconGraphics);
+
+        // Name text
+        const nameText = this.add.text(30, 0, `${itemName}${levelStr}`, {
+            fontSize: '18px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: nameColor,
+            fontStyle: 'bold'
+        });
+        container.add(nameText);
+
+        // Rarity text
+        const rarityLabel = t(`rarity.${itemData.rarity}`);
+        const rarityText = this.add.text(30, 22, rarityLabel, {
+            fontSize: '13px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: nameColor,
+        });
+        container.add(rarityText);
+
+        // Stat modifier lines
+        const modifiers = itemData.modifiers || [];
+        const statTexts: Phaser.GameObjects.Text[] = [];
+        let statY = 46;
+
+        modifiers.forEach((mod) => {
+            const line = this.formatModifier(mod);
+            const isNegative = mod.value < 0;
+            const statText = this.add.text(12, statY, line, {
+                fontSize: '15px',
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                color: isNegative ? '#ff6666' : '#88ff88',
+            });
+            container.add(statText);
+            statTexts.push(statText);
+            statY += 20;
+        });
+
+        // Extra line (e.g., "Right-click to unequip")
+        if (extraLine) {
+            statY += 4;
+            const extraText = this.add.text(12, statY, extraLine, {
+                fontSize: '13px',
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                color: '#888888',
+            });
+            container.add(extraText);
+            statY += 18;
+        }
+
+        // Measure and size the background
+        const padding = 12;
+        let maxWidth = nameText.width + 30;
+        if (rarityText.width + 30 > maxWidth) maxWidth = rarityText.width + 30;
+        statTexts.forEach(st => {
+            if (st.width + 12 > maxWidth) maxWidth = st.width + 12;
+        });
+        const totalWidth = maxWidth + padding * 2;
+        const totalHeight = statY + padding;
+
+        bg.setSize(totalWidth, totalHeight);
+
+        // Position icon inside background
+        iconGraphics.setPosition(padding, -(totalHeight) + 20);
+        nameText.setPosition(padding + 26, -(totalHeight) + 8);
+        rarityText.setPosition(padding + 26, -(totalHeight) + 28);
+
+        // Position stat lines
+        let lineY = -(totalHeight) + 50;
+        statTexts.forEach(st => {
+            st.setPosition(padding, lineY);
+            lineY += 20;
+        });
+
+        // Reposition extra line
+        if (extraLine) {
+            const extras = container.list.filter(c => c !== bg && c !== iconGraphics && c !== nameText && c !== rarityText && !statTexts.includes(c as any)) as Phaser.GameObjects.Text[];
+            extras.forEach(ex => {
+                ex.setPosition(padding, lineY - 16);
+            });
+        }
+
+        // Adjust position if overflowing screen
+        if (isUI) {
+            container.setScrollFactor(0);
+            const screenWidth = this.scale.width;
+            if (x + totalWidth > screenWidth) {
+                container.setX(x - totalWidth);
+            }
+            if (y - totalHeight < 0) {
+                bg.setOrigin(0, 0);
+                // Flip all children down
+                container.list.forEach((child: any) => {
+                    if (child !== bg) {
+                        child.setY(child.y + totalHeight);
+                    }
+                });
+            }
+        }
+
+        this.tooltip = container;
+    }
+
     private showSkillTooltip(skillId: string) {
         // Determine character type
-        const characterType = (this.player instanceof MeleePlayer) ? 'melee' : 'ranged';
-        
+        let characterType: 'melee' | 'ranged' | 'mage';
+        if (this.player instanceof MagePlayer) {
+            characterType = 'mage';
+        } else if (this.player instanceof MeleePlayer) {
+            characterType = 'melee';
+        } else {
+            characterType = 'ranged';
+        }
+
         // Get character-specific skill data
         const skillData = this.skillManager.getSkillDataForCharacter(skillId, characterType);
         
@@ -373,7 +591,7 @@ export class GameScene extends Phaser.Scene {
         this.xpBar = this.add.rectangle(20, xpBarY, 0, 10, 0x00ff00).setOrigin(0, 0.5).setScrollFactor(0).setDepth(1001);
         
         // XP text (on the bar, better visibility with stroke)
-        this.xpText = this.add.text(screenWidth / 2, xpBarY, 'XP: 0/100', {
+        this.xpText = this.add.text(screenWidth / 2, xpBarY, t('hud.xp', { current: 0, max: 100 }), {
             fontSize: '16px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -381,7 +599,7 @@ export class GameScene extends Phaser.Scene {
             strokeThickness: 2
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
         
-        this.timeText = this.add.text(20, 80, 'Time: 0:00', {
+        this.timeText = this.add.text(20, 80, t('hud.time', { time: '0:00' }), {
             fontSize: '22px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ffff'
@@ -391,7 +609,7 @@ export class GameScene extends Phaser.Scene {
         const centerX = screenWidth / 2;
         const bottomY = screenHeight - 60;
         
-        this.healthBarBg = this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0).setDepth(1000);
+        this.add.rectangle(centerX, bottomY, 300, 30, 0x333333).setScrollFactor(0).setDepth(1000);
         this.healthBar = this.add.rectangle(centerX, bottomY, 300, 30, 0x00ff00).setScrollFactor(0).setDepth(1001);
         this.healthText = this.add.text(centerX, bottomY, `${Math.round(this.player.getHealth())}/${Math.round(this.player.getMaxHealth())}`, {
             fontSize: '22px',
@@ -401,39 +619,67 @@ export class GameScene extends Phaser.Scene {
             strokeThickness: 3
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
         
+        // Mana bar (below health bar, only visible for mage)
+        const manaY = bottomY + 22;
+        this.manaBarBg = this.add.rectangle(centerX, manaY, 200, 12, 0x222244).setScrollFactor(0).setDepth(1000);
+        this.manaBar = this.add.rectangle(centerX, manaY, 200, 12, 0x4488ff).setScrollFactor(0).setDepth(1001);
+        this.manaText = this.add.text(centerX, manaY, '', {
+            fontSize: '14px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1002);
+        // Hide mana bar for non-mage
+        const isMage = this.player instanceof MagePlayer;
+        this.manaBarBg.setVisible(isMage);
+        this.manaBar.setVisible(isMage);
+        this.manaText.setVisible(isMage);
+
         // Level text (left of health bar, moved more to the left)
-        this.levelText = this.add.text(centerX - 220, bottomY, 'Level: 1', {
+        this.levelText = this.add.text(centerX - 220, bottomY, t('hud.level', { level: 1 }), {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
         
         // Add wave counter on the right side (dynamic)
-        this.waveText = this.add.text(screenWidth - 200, 20, 'Wave: 1 (0/10)', {
+        this.waveText = this.add.text(screenWidth - 200, 20, t('hud.wave', { wave: 1, killed: 0, total: 10 }), {
             fontSize: '22px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffaa00'
         }).setScrollFactor(0).setDepth(1000);
+
+        // Kill streak counter
+        this.streakText = this.add.text(screenWidth - 200, 50, '', {
+            fontSize: '18px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ff8800',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(1000);
         
+        // Create minimap
+        this.createMinimap();
+
         // Create skill UI
         this.createSkillUI();
-        
+
         // Create character stats UI
         this.createPauseUI();
     }
 
     private updateUI() {
-        this.levelText.setText(`Level: ${this.playerLevel}`);
-        
+        this.levelText.setText(t('hud.level', { level: this.playerLevel }));
+
         // Update XP bar
         const xpPercent = this.playerXP / this.xpToNextLevel;
         const maxXpBarWidth = this.scale.width - 40;
         this.xpBar.width = maxXpBarWidth * xpPercent;
-        this.xpText.setText(`XP: ${Math.floor(this.playerXP)}/${this.xpToNextLevel}`);
-        
+        this.xpText.setText(t('hud.xp', { current: Math.floor(this.playerXP), max: this.xpToNextLevel }));
+
         const minutes = Math.floor(this.gameTime / 60000);
         const seconds = Math.floor((this.gameTime % 60000) / 1000);
-        this.timeText.setText(`Time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+        this.timeText.setText(t('hud.time', { time: `${minutes}:${seconds.toString().padStart(2, '0')}` }));
         
         // Update health bar
         const player = this.getPlayer();
@@ -450,10 +696,20 @@ export class GameScene extends Phaser.Scene {
             } else {
                 this.healthBar.setFillStyle(0xff0000);
             }
+
+            // Update mana bar (for mage)
+            if (player.getMaxMana() > 0) {
+                const manaPercent = player.getMana() / player.getMaxMana();
+                this.manaBar.width = 200 * manaPercent;
+                this.manaText.setText(`${Math.round(player.getMana())}/${Math.round(player.getMaxMana())}`);
+            }
         }
     }
 
     private updateItemUI() {
+        // Hide any lingering tooltip before rebuilding item UI
+        this.hideTooltip();
+
         // Remove existing item containers
         this.itemContainers.forEach(container => {
             container.destroy();
@@ -466,40 +722,55 @@ export class GameScene extends Phaser.Scene {
         const itemStartX = 40; // Bottom left starting position
         
         items.forEach((item, index) => {
-            const rarityColors = {
+            const rarityColors: Record<string, number> = {
                 common: 0xffffff,
                 rare: 0x0000ff,
                 epic: 0x800080,
                 legendary: 0xffa500
             };
-            const color = rarityColors[item.rarity] || 0xffffff;
+            const isCursed = item.isCursed;
+            const color = isCursed ? 0xff0000 : (rarityColors[item.rarity] || 0xffffff);
 
             // Create item container directly on scene (EXACTLY like skill UI)
             const itemContainer = this.add.container(itemStartX + (index * 50), itemY).setScrollFactor(0).setDepth(1500);
-            console.log(`Creating item container ${index} at position:`, itemStartX + (index * 50), itemY);
-            
-            // Create the item background rectangle - make it more visible for debugging
-            const itemBg = this.add.rectangle(0, 0, 40, 40, 0xff0000); // Red background for debugging
+
+            // Dark semi-transparent background
+            const itemBg = this.add.rectangle(0, 0, 40, 40, 0x111122, 0.7);
             itemBg.setStrokeStyle(2, color);
-            
-            // Add the background to the container
             itemContainer.add(itemBg);
+
+            // Per-item icon
+            const icon = this.add.graphics();
+            Item.drawItemIcon(icon, item.id, 0.8);
+            itemContainer.add(icon);
             
+            // Show level badge if > 1
+            const level = item.level || 1;
+            if (level > 1) {
+                const levelBadge = this.add.text(15, -15, `${level}`, {
+                    fontSize: '12px',
+                    fontFamily: 'Helvetica, Arial, sans-serif',
+                    color: '#ffaa00',
+                    fontStyle: 'bold',
+                    stroke: '#000000',
+                    strokeThickness: 2
+                }).setOrigin(0.5);
+                itemContainer.add(levelBadge);
+            }
+
             // Try simplified interactive setup
             itemContainer.setSize(40, 40);
             itemContainer.setInteractive();
-            
+
             // Add hover effects and tooltip (EXACTLY like skill UI)
             itemContainer.on('pointerover', () => {
-                console.log('Item hover detected:', item.name); // Debug log
                 itemBg.setFillStyle(0x333333, 0.8); // Darker on hover
-                const text = `${item.name}\n${item.description}\n\nRight-click to unequip`;
-                this.showSmartTooltip(this.input.x, this.input.y, text, true);
+                const tooltipData: ItemData = { ...item, level };
+                this.showItemRichTooltip(this.input.x, this.input.y, tooltipData, true, t('popup.right_click_unequip'));
             });
             
             itemContainer.on('pointerout', () => {
-                console.log('Item hover out detected:', item.name); // Debug log
-                itemBg.setFillStyle(0xff0000); // Back to red
+                itemBg.setFillStyle(0x111122);
                 this.hideTooltip();
             });
 
@@ -516,7 +787,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     private showItemCollectedPopup(itemData: ItemData) {
-        console.log('Showing item popup for:', itemData.name); // Debug log
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
@@ -529,15 +799,15 @@ export class GameScene extends Phaser.Scene {
         border.setStrokeStyle(3, 0x00ff88);
         
         // Create title text
-        const titleText = this.add.text(0, -30, 'ITEM OBTAINED!', {
+        const titleText = this.add.text(0, -30, t('popup.item_obtained'), {
             fontSize: '20px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ff88',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-        
+
         // Create item name text
-        const itemText = this.add.text(0, 10, itemData.name, {
+        const itemText = this.add.text(0, 10, t(`item.${itemData.id}.name`), {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -576,9 +846,65 @@ export class GameScene extends Phaser.Scene {
                             delay: 2000, // Wait 2 seconds before fading
                             ease: 'Power2',
                             onComplete: () => {
-                                console.log('Popup destroyed for:', itemData.name); // Debug log
                                 popup.destroy();
                             }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    private showItemLevelUpPopup(itemData: ItemData) {
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const popup = this.add.container(screenWidth / 2, screenHeight * 0.4);
+
+        const background = this.add.rectangle(0, 0, 350, 120, 0x000000, 0.9);
+        const border = this.add.rectangle(0, 0, 350, 120, 0xffaa00, 0);
+        border.setStrokeStyle(3, 0xffaa00);
+
+        const titleText = this.add.text(0, -30, t('popup.item_level_up'), {
+            fontSize: '20px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffaa00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const level = itemData.level || 1;
+        const itemText = this.add.text(0, 10, `${t(`item.${itemData.id}.name`)} Lv.${level}`, {
+            fontSize: '24px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        popup.add([background, border, titleText, itemText]);
+        popup.setScrollFactor(0).setDepth(7000);
+        popup.setAlpha(1);
+
+        this.tweens.add({
+            targets: popup,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 150,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                this.tweens.add({
+                    targets: popup,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 150,
+                    onComplete: () => {
+                        this.tweens.add({
+                            targets: popup,
+                            alpha: 0,
+                            y: popup.y - 50,
+                            duration: 2000,
+                            delay: 1500,
+                            ease: 'Power2',
+                            onComplete: () => popup.destroy()
                         });
                     }
                 });
@@ -667,9 +993,10 @@ export class GameScene extends Phaser.Scene {
     };
 
     private levelUp() {
+        this.hideTooltip();
         this.playerLevel++;
         this.playerXP -= this.xpToNextLevel;
-        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.35); // Increase XP requirement
+        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5); // Increase XP requirement
         
         // --- Level Up Bonuses ---
         // 1. Fixed armor gain
@@ -684,11 +1011,12 @@ export class GameScene extends Phaser.Scene {
         // Unlock skills
         this.player.unlockSkills(this.playerLevel);
         
-        // Trigger level up UI
-        this.scene.launch('UIScene', { 
+        // Trigger level up UI (1 reroll per level-up)
+        this.scene.launch('UIScene', {
             level: this.playerLevel,
             upgradeManager: this.upgradeManager,
-            isGameOver: false
+            isGameOver: false,
+            rerollsRemaining: 1,
         });
         
         // Pause the game
@@ -754,6 +1082,26 @@ export class GameScene extends Phaser.Scene {
         return this.upgradeManager;
     }
 
+    public getEffectsManager(): EffectsManager {
+        return this.effectsManager;
+    }
+
+    public getObstacleManager(): ObstacleManager {
+        return this.obstacleManager;
+    }
+
+    public getSynergyManager(): SynergyManager {
+        return this.synergyManager;
+    }
+
+    public spawnItemAt(x: number, y: number) {
+        const itemData = this.itemManager.getRandomItem();
+        if (itemData) {
+            const item = new Item(this, x, y, itemData);
+            this.addItem(item);
+        }
+    }
+
     public getGameTime() {
         return this.gameTime;
     }
@@ -768,21 +1116,21 @@ export class GameScene extends Phaser.Scene {
     
     public updateWaveCounter(waveNumber: number) {
         if (!this.waveText || !this.enemySpawner) return;
-        
+
         const enemiesKilled = this.enemySpawner.getEnemiesKilledThisWave();
         const enemiesToKill = this.enemySpawner.getEnemiesToKillPerWave();
-        
-        this.waveText.setText(`Wave: ${waveNumber} (${enemiesKilled}/${enemiesToKill})`);
+
+        this.waveText.setText(t('hud.wave', { wave: waveNumber, killed: enemiesKilled, total: enemiesToKill }));
     }
-    
+
     private updateWaveDisplay() {
         if (!this.waveText || !this.enemySpawner) return;
-        
+
         const currentWave = this.enemySpawner.getWaveNumber();
         const enemiesKilled = this.enemySpawner.getEnemiesKilledThisWave();
         const enemiesToKill = this.enemySpawner.getEnemiesToKillPerWave();
-        
-        this.waveText.setText(`Wave: ${currentWave} (${enemiesKilled}/${enemiesToKill})`);
+
+        this.waveText.setText(t('hud.wave', { wave: currentWave, killed: enemiesKilled, total: enemiesToKill }));
     }
 
     private createBackground() {
@@ -983,7 +1331,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     private createCharacterStatsUI() {
-        const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
         
         // Position stats UI below and to the left of the level text
@@ -1002,7 +1349,7 @@ export class GameScene extends Phaser.Scene {
         // statsBg.setInteractive(false);
         
         // Title
-        const statsTitle = this.add.text(10, 10, 'CHARACTER STATS', {
+        const statsTitle = this.add.text(10, 10, t('stats.title'), {
             fontSize: '18px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ff88',
@@ -1097,37 +1444,46 @@ export class GameScene extends Phaser.Scene {
         const critDamage = (this.player.getCriticalStrikeDamage() * 100).toFixed(0);
         
         // Update text displays
-        this.damageText.setText(`Damage: ${damage}`);
-        this.attackSpeedText.setText(`Attack Speed: ${attackSpeed}/s`);
-        this.movementSpeedText.setText(`Move Speed: ${moveSpeed}`);
-        this.armorText.setText(`Armor: ${armor} (${damageReduction}%)`);
-        
+        this.damageText.setText(t('stats.damage', { value: damage }));
+        this.attackSpeedText.setText(t('stats.attack_speed', { value: attackSpeed }));
+        this.movementSpeedText.setText(t('stats.move_speed', { value: moveSpeed.toFixed(2) }));
+        this.armorText.setText(t('stats.armor', { armor, reduction: damageReduction }));
+
         // Show appropriate count label based on player type
         if (this.player instanceof MeleePlayer) {
-            this.projectileCountText.setText(`Attack Count: ${projectileCount}`);
+            this.projectileCountText.setText(t('stats.attack_count', { value: projectileCount }));
         } else {
-            this.projectileCountText.setText(`Projectiles: ${projectileCount}`);
+            this.projectileCountText.setText(t('stats.projectiles', { value: projectileCount }));
         }
-        
-        this.critChanceText.setText(`Crit Chance: ${critChance}%`);
-        this.critDamageText.setText(`Crit Damage: ${critDamage}%`);
+
+        this.critChanceText.setText(t('stats.crit_chance', { value: critChance }));
+        this.critDamageText.setText(t('stats.crit_damage', { value: critDamage }));
 
         // Update character-specific stats
-        if (this.player instanceof MeleePlayer) {
+        if (this.player instanceof MagePlayer) {
+            const magePlayer = this.player as MagePlayer;
+            const spellAmp = (magePlayer.getSpellAmplification() * 100).toFixed(0);
+            const lightningDmg = (magePlayer.getLightningDamageMultiplier() * 100).toFixed(0);
+            this.qSkillRepeatText.setText(t('stats.spell_amp', { value: spellAmp }));
+            this.qSkillRepeatText.setVisible(true);
+            this.qSkillRangeText.setText(t('stats.lightning_dmg', { value: lightningDmg }));
+            this.qSkillRangeText.setVisible(true);
+            this.meleeAttackRangeText.setVisible(false);
+        } else if (this.player instanceof MeleePlayer) {
             const meleePlayer = this.player as MeleePlayer;
             const qSkillRadius = Math.round(meleePlayer.getQSkillRadius());
             const attackRange = Math.round(meleePlayer.getAttackRange());
-            
-            this.qSkillRangeText.setText(`Q Range: ${qSkillRadius}`);
+
+            this.qSkillRangeText.setText(t('stats.q_range', { value: qSkillRadius }));
             this.qSkillRangeText.setVisible(true);
-            this.meleeAttackRangeText.setText(`Attack Range: ${attackRange}`);
+            this.meleeAttackRangeText.setText(t('stats.attack_range', { value: attackRange }));
             this.meleeAttackRangeText.setVisible(true);
             this.qSkillRepeatText.setVisible(false);
         } else if (this.player instanceof RangedPlayer) {
             const rangedPlayer = this.player as RangedPlayer;
             const qProjectileMultiplier = rangedPlayer.getQSkillHomingMultiplier();
-            
-            this.qSkillRepeatText.setText(`Q Projectiles: ${qProjectileMultiplier}x`);
+
+            this.qSkillRepeatText.setText(t('stats.q_projectiles', { value: qProjectileMultiplier }));
             this.qSkillRepeatText.setVisible(true);
             this.qSkillRangeText.setVisible(false);
             this.meleeAttackRangeText.setVisible(false);
@@ -1236,6 +1592,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     public gameOver() {
+        this.hideTooltip();
         // Stop the game
         this.scene.pause();
         
@@ -1253,13 +1610,13 @@ export class GameScene extends Phaser.Scene {
 
         const overlay = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.5).setOrigin(0);
 
-        const pauseText = this.add.text(screenWidth / 2, screenHeight * 0.4, 'Game Paused', {
+        const pauseText = this.add.text(screenWidth / 2, screenHeight * 0.4, t('pause.title'), {
             fontSize: '48px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
         }).setOrigin(0.5);
 
-        const resumeText = this.add.text(screenWidth / 2, screenHeight * 0.6, 'Press ESC to resume', {
+        const resumeText = this.add.text(screenWidth / 2, screenHeight * 0.6, t('pause.resume'), {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -1270,7 +1627,8 @@ export class GameScene extends Phaser.Scene {
     }
     
     private togglePause() {
-        const uiScene = this.scene.get('UIScene') as any;
+        this.hideTooltip();
+        const uiScene = this.scene.get('UIScene');
 
         if (this.scene.isPaused()) {
             this.scene.resume();
@@ -1285,6 +1643,107 @@ export class GameScene extends Phaser.Scene {
                 uiScene.scene.setVisible(false);
             }
         }
+    }
+
+    private updateStreakDisplay() {
+        if (!this.streakText || !this.effectsManager) return;
+        const streak = this.effectsManager.getKillStreak();
+        if (streak >= 3) {
+            this.streakText.setText(t('hud.streak', { streak }));
+            this.streakText.setVisible(true);
+        } else {
+            this.streakText.setVisible(false);
+        }
+    }
+
+    private createMinimap() {
+        const screenWidth = this.scale.width;
+        const mapX = screenWidth - this.MINIMAP_SIZE - 15;
+        const mapY = 80; // Below wave + streak text
+
+        // Background
+        this.add.rectangle(
+            mapX + this.MINIMAP_SIZE / 2, mapY + this.MINIMAP_SIZE / 2,
+            this.MINIMAP_SIZE, this.MINIMAP_SIZE, 0x111111, 0.7
+        ).setScrollFactor(0).setDepth(900);
+
+        // Border
+        const border = this.add.rectangle(
+            mapX + this.MINIMAP_SIZE / 2, mapY + this.MINIMAP_SIZE / 2,
+            this.MINIMAP_SIZE, this.MINIMAP_SIZE, 0x000000, 0
+        ).setScrollFactor(0).setDepth(901);
+        border.setStrokeStyle(2, 0x444444);
+
+        // Graphics layer for dots
+        this.minimapGraphics = this.add.graphics()
+            .setScrollFactor(0).setDepth(902);
+    }
+
+    private updateMinimap() {
+        if (!this.minimapGraphics || !this.player) return;
+
+        this.minimapGraphics.clear();
+
+        const screenWidth = this.scale.width;
+        const mapX = screenWidth - this.MINIMAP_SIZE - 15;
+        const mapY = 80;
+        const centerX = mapX + this.MINIMAP_SIZE / 2;
+        const centerY = mapY + this.MINIMAP_SIZE / 2;
+        const halfSize = this.MINIMAP_SIZE / 2;
+        const scale = this.MINIMAP_SIZE / (this.MINIMAP_RANGE * 2);
+        const px = this.player.getX();
+        const py = this.player.getY();
+
+        // Draw enemies as red dots
+        this.enemies.getChildren().forEach((enemy: any) => {
+            const dx = (enemy.x - px) * scale;
+            const dy = (enemy.y - py) * scale;
+
+            if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                const isBoss = enemy.isBossEnemy && enemy.isBossEnemy();
+                const isElite = enemy.isEliteEnemy && enemy.isEliteEnemy();
+                if (isBoss) {
+                    this.minimapGraphics.fillStyle(0xff0000, 1);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 4);
+                } else if (isElite) {
+                    this.minimapGraphics.fillStyle(0xffd700, 0.9);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 2.5);
+                } else {
+                    this.minimapGraphics.fillStyle(0xff4444, 0.7);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 1.5);
+                }
+            }
+        });
+
+        // Draw items as yellow dots
+        this.items.getChildren().forEach((item: any) => {
+            const dx = (item.x - px) * scale;
+            const dy = (item.y - py) * scale;
+            if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                this.minimapGraphics.fillStyle(0xffd700, 0.8);
+                this.minimapGraphics.fillRect(centerX + dx - 1.5, centerY + dy - 1.5, 3, 3);
+            }
+        });
+
+        // Draw shrines as cyan diamonds
+        if (this.obstacleManager) {
+            this.obstacleManager.getShrines().getChildren().forEach((shrine: any) => {
+                if (!shrine.active) return;
+                const dx = (shrine.x - px) * scale;
+                const dy = (shrine.y - py) * scale;
+                if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                    const sx = centerX + dx;
+                    const sy = centerY + dy;
+                    this.minimapGraphics.fillStyle(0x00ffff, 0.9);
+                    this.minimapGraphics.fillTriangle(sx, sy - 4, sx - 3, sy, sx + 3, sy);
+                    this.minimapGraphics.fillTriangle(sx, sy + 4, sx - 3, sy, sx + 3, sy);
+                }
+            });
+        }
+
+        // Draw player as green dot in center
+        this.minimapGraphics.fillStyle(0x00ff00, 1);
+        this.minimapGraphics.fillCircle(centerX, centerY, 3);
     }
 
     private createBossIndicator() {
@@ -1307,10 +1766,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     private updateBossIndicator() {
-        const boss = this.enemies.getChildren().find(enemy => (enemy as any).isBossEnemy());
+        const boss = this.enemies.getChildren().find(enemy => (enemy as BaseEnemy).isBossEnemy());
 
         if (boss) {
-            const bossEnemy = boss as any;
+            const bossEnemy = boss as BaseEnemy;
             const camera = this.cameras.main;
             const screenWidth = this.scale.width;
             const screenHeight = this.scale.height;

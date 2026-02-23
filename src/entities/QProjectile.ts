@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GameSceneInterface } from '../types/GameSceneInterface';
 
 export class QProjectile extends Phaser.GameObjects.Container {
     private sprite!: Phaser.GameObjects.Rectangle;
@@ -21,9 +22,15 @@ export class QProjectile extends Phaser.GameObjects.Container {
         this.damage = damage;
         this.isCritical = isCritical;
         
-        // Create projectile sprite (yellow for Q skill)
-        this.sprite = scene.add.rectangle(0, 0, 6, 6, 0xffff00);
+        // Create Q projectile visual (cyan glowing circle)
+        this.sprite = scene.add.rectangle(0, 0, 4, 4, 0xffffff);
         this.add(this.sprite);
+        const glow = scene.add.graphics();
+        glow.fillStyle(0x00ffff, 0.5);
+        glow.fillCircle(0, 0, 5);
+        glow.fillStyle(0xffffff, 0.8);
+        glow.fillCircle(0, 0, 2);
+        this.add(glow);
         
         // Add physics body
         scene.physics.add.existing(this);
@@ -48,7 +55,7 @@ export class QProjectile extends Phaser.GameObjects.Container {
         this.setupCollisions();
     }
 
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         this.age += delta;
         
         // Destroy if too old
@@ -58,7 +65,7 @@ export class QProjectile extends Phaser.GameObjects.Container {
         }
         
         // Destroy if out of map bounds
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const mapBounds = gameScene.getMapSize() / 2;
         if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
             this.destroy();
@@ -66,11 +73,10 @@ export class QProjectile extends Phaser.GameObjects.Container {
     }
 
     private setupCollisions() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
+        const gameScene = this.scene as GameSceneInterface;
+
         // Check collision with enemies
-        scene.physics.add.overlap(
+        gameScene.physics.add.overlap(
             this,
             gameScene.getEnemies(),
             this.onEnemyHit,
@@ -79,7 +85,7 @@ export class QProjectile extends Phaser.GameObjects.Container {
         );
     }
 
-    private onEnemyHit(projectile: any, enemy: any) {
+    private onEnemyHit(_projectile: any, enemy: any) {
         // Deal damage to enemy
         enemy.takeDamage(this.damage, this.isCritical);
         

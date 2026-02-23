@@ -1,6 +1,5 @@
 import { BasePlayer } from './BasePlayer';
-import { Pet } from './Pet';
-import { GameScene } from '../scenes/GameScene';
+import { GameSceneInterface } from '../types/GameSceneInterface';
 
 export class MeleePlayer extends BasePlayer {
     protected attackRange: number = 200;
@@ -16,14 +15,37 @@ export class MeleePlayer extends BasePlayer {
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
-        this.baseMaxHealth = 150;
-        this.health = 150;
+        this.baseMaxHealth = 225;
+        this.health = 225;
         this.armor = 10;
         this.isMelee = true;
-        this.armorPerLevelUp = 7; // Armor increase per level up
-        
-        // Override dash duration to be 2x longer for melee
-        this.dashDuration = 400; // 400ms instead of 200ms
+        this.armorPerLevelUp = 7;
+        this.dashDuration = 400;
+
+        // Melee visual: red tones
+        this.bodyColor = 0xCC3333;
+        this.chestColor = 0xDD5555;
+        this.sprite.setFillStyle(0xCC3333);
+        this.detailsGraphics.clear();
+        this.drawPlayerDetails();
+
+        // Top-down melee details
+        const meleeDetails = scene.add.graphics();
+        // Shoulder circles (top-down)
+        meleeDetails.fillStyle(0xAA2222);
+        meleeDetails.fillCircle(-10, 0, 4);
+        meleeDetails.fillCircle(10, 0, 4);
+        // Sword on right side (pointing up)
+        meleeDetails.fillStyle(0xCCCCCC);
+        meleeDetails.fillRect(12, -16, 3, 18);
+        meleeDetails.fillStyle(0x886600);
+        meleeDetails.fillRect(10, -2, 7, 3);
+        // Shield on left side (top-down circle)
+        meleeDetails.lineStyle(2, 0x886600);
+        meleeDetails.strokeCircle(-13, -4, 5);
+        meleeDetails.fillStyle(0xAA7722, 0.5);
+        meleeDetails.fillCircle(-13, -4, 4);
+        this.add(meleeDetails);
     }
 
     public attack(): void {
@@ -36,10 +58,9 @@ export class MeleePlayer extends BasePlayer {
             this.canMove = true;
         });
 
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
-        const mousePointer = scene.input.activePointer;
+        const mousePointer = gameScene.input.activePointer;
         const mouseX = mousePointer.worldX;
         const mouseY = mousePointer.worldY;
 
@@ -53,22 +74,21 @@ export class MeleePlayer extends BasePlayer {
     }
 
     public useQSkill(): void {
-        if (!this.qSkillUnlocked || this.qCooldownTimer > 0) return;
+        if (!this.qSkillUnlocked || this.getCooldownTimer('q') > 0) return;
 
-        this.qCooldownTimer = this.qCooldown;
+        this.startCooldown('q');
         this.canMove = false;
         this.scene.time.delayedCall(300, () => {
             this.canMove = true;
         });
 
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
         // Create a visual effect for the AoE
-        const ring = scene.add.graphics();
+        const ring = gameScene.add.graphics();
         ring.fillStyle(0xffffff, 0.2); // Filled circle
         ring.fillCircle(this.x, this.y, this.qSkillRadius);
-        scene.tweens.add({
+        gameScene.tweens.add({
             targets: ring,
             alpha: 0,
             duration: 300,
@@ -115,24 +135,23 @@ export class MeleePlayer extends BasePlayer {
     }
 
     public useRSkill(): void {
-        if (!this.rSkillUnlocked || this.rCooldownTimer > 0) return;
+        if (!this.rSkillUnlocked || this.getCooldownTimer('r') > 0) return;
 
-        this.rCooldownTimer = this.rCooldown;
+        this.startCooldown('r');
         this.canMove = false;
         this.scene.time.delayedCall(500, () => {
             this.canMove = true;
         });
 
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
         const radius = 400;
 
         // Create a visual effect for the AoE
-        const ring = scene.add.graphics();
+        const ring = gameScene.add.graphics();
         ring.lineStyle(10, 0xff0000, 0.5);
         ring.strokeCircle(this.x, this.y, radius);
-        scene.tweens.add({
+        gameScene.tweens.add({
             targets: ring,
             alpha: 0,
             duration: 500,
@@ -153,34 +172,8 @@ export class MeleePlayer extends BasePlayer {
         });
     }
 
-    public useESkill(): void {
-        if (!this.eSkillUnlocked || this.eCooldownTimer > 0 || this.shieldActive) return;
-        
-        this.eCooldownTimer = this.eCooldown;
-        this.activateShield();
-
-        if (this.eSkillHeals) {
-            this.heal(this.maxHealth * 0.1);
-        }
-    }
-
-    public useFSkill(): void {
-        if (!this.fSkillUnlocked || this.fCooldownTimer > 0) {
-            return;
-        }
-
-        this.fCooldownTimer = this.fCooldown;
-
-        const gameScene = this.scene as GameScene;
-        const pet = new Pet(gameScene, this.x, this.y, this, 20000);
-        gameScene.addPet(pet);
-    }
-
     public increaseAttackRange(amount: number) {
-        // Add to the multiplier instead of modifying the range directly
         this.attackRangeMultiplier += amount;
-        console.log(`increaseAttackRange(${amount}): attackRangeMultiplier=${this.attackRangeMultiplier}`);
-        // Don't recalculate here - let recalculateStats() handle it
     }
 
     public increaseMeleeAttackCount(amount: number) {
@@ -206,10 +199,7 @@ export class MeleePlayer extends BasePlayer {
     }
 
     public increaseQSkillRadius(amount: number) {
-        // Add to the multiplier instead of modifying the radius directly
         this.qSkillRadiusMultiplier += amount;
-        console.log(`increaseQSkillRadius(${amount}): qSkillRadiusMultiplier=${this.qSkillRadiusMultiplier}`);
-        // Don't recalculate here - let recalculateStats() handle it
     }
 
     public getMeleeAttackCount(): number {
@@ -225,30 +215,21 @@ export class MeleePlayer extends BasePlayer {
     }
 
     public recalculateStats() {
-        // DON'T reset multipliers here - let the upgrade system handle that
-        // Just recalculate the derived values from current multipliers
         this.attackRange = this.baseAttackRange * this.attackRangeMultiplier;
         this.qSkillRadius = this.baseQSkillRadius * this.qSkillRadiusMultiplier;
-        
-        // Debug logging
-        console.log(`MeleePlayer recalculating: attackRange=${this.attackRange} (base=${this.baseAttackRange} * ${this.attackRangeMultiplier}), qSkillRadius=${this.qSkillRadius} (base=${this.baseQSkillRadius} * ${this.qSkillRadiusMultiplier})`);
-        
-        // Call parent recalculate stats
         super.recalculateStats();
     }
 
     // Add a method to reset multipliers (called by upgrade system before reapplying)
     public resetMeleeMultipliers() {
-        console.log(`resetMeleeMultipliers: before reset - attackRangeMultiplier=${this.attackRangeMultiplier}, qSkillRadiusMultiplier=${this.qSkillRadiusMultiplier}`);
-        this.meleeAttackCount = 1; // Reset to default 1 attack
+        this.meleeAttackCount = 1;
         this.attackRangeMultiplier = 1;
         this.qSkillRadiusMultiplier = 1;
         this.qSkillDamageMultiplier = 1;
-        this.rSkillBleedingDamage = 0.03; // Reset to default 3%
-        console.log(`resetMeleeMultipliers: after reset - attackRangeMultiplier=${this.attackRangeMultiplier}, qSkillRadiusMultiplier=${this.qSkillRadiusMultiplier}`);
+        this.rSkillBleedingDamage = 0.03;
     }
 
-    private performMeleeSwing(angle: number, gameScene: any) {
+    private performMeleeSwing(angle: number, gameScene: GameSceneInterface) {
         // Create a sword slash effect
         const sword = this.scene.add.graphics();
         sword.fillStyle(0xffffff, 0.5);
@@ -277,7 +258,7 @@ export class MeleePlayer extends BasePlayer {
                     const enemyRect = new Phaser.Geom.Rectangle(enemyBody.x, enemyBody.y, enemyBody.width, enemyBody.height);
                     if (Phaser.Geom.Intersects.CircleToRectangle(attackCircle, enemyRect)) {
                         const enemyAngle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
-                        if (Math.abs(Phaser.Math.Angle.ShortestBetween(angle, enemyAngle)) < Math.PI / 4) {
+                        if (Math.abs(Phaser.Math.Angle.Wrap(enemyAngle - angle)) < Math.PI / 4) {
                             const { damage, isCritical } = this.calculateDamage(this.attackDamage);
                             enemy.takeDamage(damage, isCritical);
                         }
@@ -295,6 +276,25 @@ export class MeleePlayer extends BasePlayer {
                 }
             }
         });
+
+        // Also damage destructible crates in the slash arc
+        try {
+            const obstacleManager = gameScene.getObstacleManager();
+            if (obstacleManager) {
+                const crates = obstacleManager.getCrates().getChildren();
+                crates.forEach((crate: any) => {
+                    if (!crate.active) return;
+                    const distance = Phaser.Math.Distance.Between(this.x, this.y, crate.x, crate.y);
+                    if (distance < this.attackRange) {
+                        const crateAngle = Phaser.Math.Angle.Between(this.x, this.y, crate.x, crate.y);
+                        if (Math.abs(Phaser.Math.Angle.ShortestBetween(angle, crateAngle)) < Math.PI / 4) {
+                            // Trigger the crate's hit method
+                            if (crate.meleeHit) crate.meleeHit();
+                        }
+                    }
+                });
+            }
+        } catch (_e) { /* obstacle manager not ready */ }
     }
 
     public getProjectileCount(): number {
@@ -306,9 +306,9 @@ export class MeleePlayer extends BasePlayer {
     }
 
     public useDashSkill() {
-        if (!this.dashSkillUnlocked || this.dashCooldownTimer > 0 || this.isDashing) return;
-        
-        this.dashCooldownTimer = this.dashCooldown;
+        if (!this.dashSkillUnlocked || this.getCooldownTimer('dash') > 0 || this.isDashing) return;
+
+        this.startCooldown('dash');
         this.isDashing = true;
         this.dashTimer = 0;
         
@@ -318,11 +318,10 @@ export class MeleePlayer extends BasePlayer {
         // Create dash trail effect
         this.createDashTrail();
         
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
+        const gameScene = this.scene as GameSceneInterface;
+
         // Get mouse position for dash direction (world coordinates)
-        const mousePointer = scene.input.activePointer;
+        const mousePointer = gameScene.input.activePointer;
         const mouseX = mousePointer.worldX;
         const mouseY = mousePointer.worldY;
         
@@ -360,7 +359,7 @@ export class MeleePlayer extends BasePlayer {
         };
     }
 
-    private setupDashAttacks(gameScene: any) {
+    private setupDashAttacks(gameScene: GameSceneInterface) {
         // Attack enemies every 50ms during the dash
         const attackInterval = 50;
         const maxAttacks = Math.floor(this.dashDuration / attackInterval);
@@ -374,7 +373,7 @@ export class MeleePlayer extends BasePlayer {
         }
     }
 
-    private performDashAttack(gameScene: any) {
+    private performDashAttack(gameScene: GameSceneInterface) {
         const enemies = gameScene.getEnemies().getChildren();
         const dashRange = 80; // Range around player to hit enemies during dash
         

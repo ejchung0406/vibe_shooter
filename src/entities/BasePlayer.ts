@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
-import { QProjectile } from './QProjectile';
-import { ExplosiveProjectile } from './ExplosiveProjectile';
-import { Projectile } from './Projectile';
 import { Pet } from './Pet';
 import { GameScene } from '../scenes/GameScene';
-import { Item, ItemData } from './Item';
+import { ItemData } from './Item';
+import { PlayerStatName, StatOp } from '../data/PlayerStats';
+import { GameSceneInterface } from '../types/GameSceneInterface';
 
 export const SKILL_UNLOCK_LEVELS = {
     Q: 2,
@@ -17,6 +16,9 @@ export const SKILL_UNLOCK_LEVELS = {
 
 export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected sprite!: Phaser.GameObjects.Rectangle;
+    protected detailsGraphics!: Phaser.GameObjects.Graphics;
+    protected bodyColor: number = 0x22AA66;
+    protected chestColor: number = 0x33CC77;
     protected attackTimer: number = 0;
     protected attackCooldown: number = 1000; // milliseconds
     protected velocityX: number = 0;
@@ -24,7 +26,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected moveSpeed: number = 200;
 
     // Stat rework
-    protected baseAttackDamage: number = 10;
+    protected baseAttackDamage: number = 30;
     protected bonusAttackDamage: number = 0;
     protected attackDamageMultiplier: number = 1.0;
     protected attackDamage: number = 10;
@@ -38,7 +40,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected attackPauseTimer: number = 0;
     protected health: number = 100;
     protected maxHealth: number = 100;
-    protected baseMaxHealth: number = 100;
+    protected baseMaxHealth: number = 150;
     protected isInvulnerable: boolean = false;
     protected invulnerabilityDuration: number = 1000; // 1 second
     protected invulnerabilityTimer: number = 0;
@@ -65,6 +67,15 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected hasAegis: boolean = false;
     protected healthRegen: number = 0;
     protected healthRegenTimer: number = 0;
+    protected xpMagnetRange: number = 0; // 0 = disabled
+
+    // Mana system (used by MagePlayer, stubs for others)
+    protected mana: number = 0;
+    protected maxMana: number = 0;
+    protected baseMana: number = 0;
+    protected baseManaRegen: number = 0;
+    protected manaRegen: number = 0;
+    protected manaRegenTimer: number = 0;
 
     // Attack properties
     protected comboCounter: number = 0;
@@ -82,24 +93,22 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected jumpSkillUnlocked: boolean = false;
     protected rSkillUnlocked: boolean = false;
     protected fSkillUnlocked: boolean = false;
-    protected qCooldown: number = 3000; // 3 seconds
-    protected eCooldown: number = 8000; // 8 seconds
-    protected readonly originalECooldown: number;
-    protected jumpCooldown: number = 2000; // 2 seconds
-    protected rCooldown: number = 10000; // 10 seconds
-    protected readonly originalRCooldown: number;
-    protected fCooldown: number = 40000; // 40 seconds
-    protected readonly originalFCooldown: number;
-    protected qCooldownTimer: number = 0;
-    protected eCooldownTimer: number = 0;
-    protected jumpCooldownTimer: number = 0;
-    protected rCooldownTimer: number = 0;
-    protected fCooldownTimer: number = 0;
-    
-    // Dash properties
     protected dashSkillUnlocked: boolean = false;
-    protected dashCooldown: number = 3000; // 3 seconds
-    protected dashCooldownTimer: number = 0;
+
+    // Cooldown map: { max cooldown, current timer }
+    protected cooldowns: Map<string, { max: number, timer: number }> = new Map([
+        ['q', { max: 3000, timer: 0 }],
+        ['e', { max: 8000, timer: 0 }],
+        ['jump', { max: 2000, timer: 0 }],
+        ['r', { max: 10000, timer: 0 }],
+        ['f', { max: 40000, timer: 0 }],
+        ['dash', { max: 3000, timer: 0 }],
+    ]);
+
+    // Store original cooldowns for upgrades that reduce cooldowns
+    protected readonly originalECooldown: number;
+    protected readonly originalRCooldown: number;
+    protected readonly originalFCooldown: number;
     protected isDashing: boolean = false;
     protected dashDuration: number = 200; // 200ms dash duration
     protected dashTimer: number = 0;
@@ -127,10 +136,16 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
         
-        // Create player sprite (simple rectangle for now)
-        this.sprite = scene.add.rectangle(0, 0, 20, 20, 0x00ff00);
+        // Create player body
+        this.sprite = scene.add.rectangle(0, 2, 20, 24, this.bodyColor);
+        this.sprite.setStrokeStyle(1, 0x000000);
         this.add(this.sprite);
-        
+
+        // Details overlay (head, chest, eyes)
+        this.detailsGraphics = scene.add.graphics();
+        this.drawPlayerDetails();
+        this.add(this.detailsGraphics);
+
         // Scale the player
         this.setScale(1.5);
 
@@ -157,16 +172,36 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         // Initial skill unlock check
         this.unlockSkills(1);
 
-        // Store original cooldowns
-        this.originalECooldown = this.eCooldown;
-        this.originalRCooldown = this.rCooldown;
-        this.originalFCooldown = this.fCooldown;
+        // Store original cooldowns from map
+        this.originalECooldown = this.cooldowns.get('e')!.max;
+        this.originalRCooldown = this.cooldowns.get('r')!.max;
+        this.originalFCooldown = this.cooldowns.get('f')!.max;
 
         // Ensure maxHealth and health are set based on baseMaxHealth after all initializations
         this.maxHealth = this.baseMaxHealth;
         this.health = this.maxHealth;
 
         // Player starts with no items
+    }
+
+    protected drawPlayerDetails() {
+        this.detailsGraphics.clear();
+        const g = this.detailsGraphics;
+        // Top-down body outline
+        g.lineStyle(1.5, 0x000000, 0.5);
+        g.strokeCircle(0, 0, 11);
+        // Inner body shade
+        g.fillStyle(this.chestColor, 0.5);
+        g.fillCircle(0, 0, 8);
+        // Directional wedge (points up = forward)
+        g.fillStyle(0xffffff, 0.6);
+        g.fillTriangle(-4, -2, 0, -12, 4, -2);
+        // Belt strap across middle
+        g.lineStyle(2, 0x000000, 0.3);
+        g.beginPath();
+        g.moveTo(-8, 2);
+        g.lineTo(8, 2);
+        g.strokePath();
     }
 
     private createHealthBar() {
@@ -198,7 +233,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         }
     }
 
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         // Update attack pause timer
         if (this.isAttacking) {
             this.attackPauseTimer += delta;
@@ -215,15 +250,18 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
             // Blink white every 100ms
             const blinkInterval = 100;
             if (Math.floor(this.invulnerabilityTimer / blinkInterval) % 2 === 0) {
-                this.sprite.setFillStyle(0xffffff); // White
+                this.sprite.setFillStyle(0xffffff);
+                this.detailsGraphics.setAlpha(0.3);
             } else {
-                this.sprite.setFillStyle(0x00ff00); // Normal green
+                this.sprite.setFillStyle(this.bodyColor);
+                this.detailsGraphics.setAlpha(1);
             }
-            
+
             if (this.invulnerabilityTimer >= this.invulnerabilityDuration) {
                 this.isInvulnerable = false;
                 this.invulnerabilityTimer = 0;
-                this.sprite.setFillStyle(0x00ff00); // Return to normal color
+                this.sprite.setFillStyle(this.bodyColor);
+                this.detailsGraphics.setAlpha(1);
             }
         }
         
@@ -253,50 +291,15 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         // Heal over time
         this.updateHealOverTime(delta);
         this.updateHealthRegen(delta);
-    }
 
-    private triggerComboAttack() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
-        // Get mouse position for combo attack direction
-        const mouseX = scene.input.mousePointer.x;
-        const mouseY = scene.input.mousePointer.y;
-        
-        // Calculate angle to mouse
-        const dx = mouseX - this.x;
-        const dy = mouseY - this.y;
-        const angle = Math.atan2(dy, dx);
-        
-        // Create a powerful combo attack (3 projectiles instead of 8)
-        for (let i = 0; i < 3; i++) {
-            const spreadAngle = angle + (i - 1) * 0.3;
-            const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
-            const projectile = new Projectile(
-                scene,
-                this.x,
-                this.y,
-                damage,
-                this.projectileSpeed * 1.5,
-                spreadAngle,
-                true, // Combo attacks pierce
-                false,
-                isCritical
-            );
-            
-            gameScene.getProjectiles().add(projectile);
+        // Mana regen (no-op for non-mage: maxMana=0)
+        if (this.maxMana > 0 && this.manaRegen > 0) {
+            this.manaRegenTimer += delta;
+            if (this.manaRegenTimer >= 1000) {
+                this.manaRegenTimer -= 1000;
+                this.mana = Math.min(this.maxMana, this.mana + this.manaRegen);
+            }
         }
-    }
-
-    private updateMovement(delta: number) {
-        // Normalize diagonal movement
-        const speed = this.moveSpeed * (delta / 1000);
-        
-        // Apply velocity
-        this.x += this.velocityX * speed;
-        this.y += this.velocityY * speed;
-        
-        // No boundaries - player can move freely
     }
 
     public setVelocity(x: number, y: number) {
@@ -307,89 +310,17 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public abstract attack(): void;
+    public abstract useQSkill(): void;
+    public abstract useRSkill(): void;
 
-    public abstract useESkill(): void;
+    public useESkill(): void {
+        if (!this.eSkillUnlocked || this.getCooldownTimer('e') > 0 || this.shieldActive) return;
 
-    public abstract useFSkill(): void;
+        this.startCooldown('e');
+        this.activateShield();
 
-    private performSpreadAttack(scene: Phaser.Scene, gameScene: any, baseAngle: number, isComboShot: boolean = false, isHoming: boolean = false) {
-        for (let i = 0; i < this.projectileCount; i++) {
-            // Spread projectiles in an arc
-            const spreadAngle = Math.PI / 4; // 45 degrees total spread
-            const angleStep = spreadAngle / (this.projectileCount - 1);
-            const projectileAngle = baseAngle - spreadAngle / 2 + angleStep * i;
-            
-            let projectile;
-            // Only make center projectile explosive for combo (middle index)
-            const centerIndex = Math.floor((this.projectileCount - 1) / 2);
-            if (isComboShot && i === centerIndex) {
-                const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
-                projectile = new ExplosiveProjectile(
-                    scene,
-                    this.x,
-                    this.y,
-                    damage,
-                    this.projectileSpeed,
-                    projectileAngle,
-                    this.explosiveDamageMultiplier,
-                    this.explosiveBossDamageMultiplier,
-                    this.piercing,
-                    isCritical
-                );
-            } else {
-                const { damage, isCritical } = this.calculateDamage(this.attackDamage);
-                projectile = new Projectile(
-                    scene,
-                    this.x,
-                    this.y,
-                    damage,
-                    this.projectileSpeed,
-                    projectileAngle,
-                    this.piercing,
-                    isHoming, // Enable homing if mouse is over enemy
-                    isCritical
-                );
-            }
-            
-            gameScene.getProjectiles().add(projectile);
-        }
-    }
-
-    private performBurstAttack(scene: Phaser.Scene, gameScene: any, angle: number, isComboShot: boolean = false, isHoming: boolean = false) {
-        for (let i = 0; i < this.projectileCount; i++) {
-            scene.time.delayedCall(i * 50, () => { // 50ms delay between shots
-                let projectile;
-                if (isComboShot && i === 0) { // Make first projectile explosive for combo
-                    const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
-                    projectile = new ExplosiveProjectile(
-                        scene,
-                        this.x,
-                        this.y,
-                        damage,
-                        this.projectileSpeed,
-                        angle,
-                        this.explosiveDamageMultiplier,
-                        this.explosiveBossDamageMultiplier,
-                        this.piercing,
-                        isCritical
-                    );
-                } else {
-                    const { damage, isCritical } = this.calculateDamage(this.attackDamage);
-                    projectile = new Projectile(
-                        scene,
-                        this.x,
-                        this.y,
-                        damage,
-                        this.projectileSpeed,
-                        angle,
-                        this.piercing,
-                        isHoming, // Enable homing if mouse is over enemy
-                        isCritical
-                    );
-                }
-                
-                gameScene.getProjectiles().add(projectile);
-            });
+        if (this.eSkillHeals) {
+            this.heal(this.maxHealth * 0.1);
         }
     }
 
@@ -424,7 +355,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public unlockSkills(level: number) {
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
         if (level >= SKILL_UNLOCK_LEVELS.Q && !this.qSkillUnlocked) {
             this.qSkillUnlocked = true;
@@ -513,26 +444,143 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     private updateSkillCooldowns(delta: number) {
-        // Update all skill cooldown timers
-        if (this.qCooldownTimer > 0) {
-            this.qCooldownTimer = Math.max(0, this.qCooldownTimer - delta);
-        }
-        if (this.eCooldownTimer > 0) {
-            this.eCooldownTimer = Math.max(0, this.eCooldownTimer - delta);
-        }
-        if (this.jumpCooldownTimer > 0) {
-            this.jumpCooldownTimer = Math.max(0, this.jumpCooldownTimer - delta);
-        }
-        if (this.rCooldownTimer > 0) {
-            this.rCooldownTimer = Math.max(0, this.rCooldownTimer - delta);
-        }
-        if (this.fCooldownTimer > 0) {
-            this.fCooldownTimer = Math.max(0, this.fCooldownTimer - delta);
-        }
-        if (this.dashCooldownTimer > 0) {
-            this.dashCooldownTimer = Math.max(0, this.dashCooldownTimer - delta);
+        for (const cd of this.cooldowns.values()) {
+            if (cd.timer > 0) {
+                cd.timer = Math.max(0, cd.timer - delta);
+            }
         }
     }
+
+    // Cooldown helpers
+    public startCooldown(id: string) {
+        const cd = this.cooldowns.get(id);
+        if (cd) cd.timer = cd.max;
+    }
+
+    public isCooldownReady(id: string): boolean {
+        const cd = this.cooldowns.get(id);
+        return cd ? cd.timer <= 0 : true;
+    }
+
+    public getCooldownTimer(id: string): number {
+        return this.cooldowns.get(id)?.timer ?? 0;
+    }
+
+    public getCooldownMax(id: string): number {
+        return this.cooldowns.get(id)?.max ?? 0;
+    }
+
+    protected setCooldownMax(id: string, max: number) {
+        const cd = this.cooldowns.get(id);
+        if (cd) cd.max = max;
+    }
+
+    // Generic stat modification for data-driven items
+    public applyStat(stat: PlayerStatName, op: StatOp, value: number) {
+        switch (stat) {
+            case 'bonusAttackDamage':
+                if (op === 'add') this.bonusAttackDamage += value;
+                break;
+            case 'attackDamageMultiplier':
+                if (op === 'add') this.attackDamageMultiplier += value;
+                break;
+            case 'attackSpeed':
+                if (op === 'multiply') this.attackCooldown *= (1 - value);
+                this.attackCooldown = Math.max(100, this.attackCooldown);
+                break;
+            case 'projectileSpeed':
+                if (op === 'add') this.projectileSpeed += value;
+                break;
+            case 'criticalStrikeDamage':
+                if (op === 'add') this.criticalStrikeDamage += value;
+                break;
+            case 'maxHealth':
+                if (op === 'add') this.maxHealth += value;
+                break;
+            case 'moveSpeed':
+                if (op === 'multiply') this.moveSpeed *= (1 + value);
+                break;
+            case 'projectileCount':
+                if (op === 'add') this.projectileCount += value;
+                break;
+            case 'healthRegen':
+                if (op === 'set') this.healthRegen = value;
+                break;
+            case 'lifeSteal':
+                if (op === 'set') this.lifeSteal = value;
+                break;
+            case 'hasAegis':
+                if (op === 'set') this.hasAegis = value === 1;
+                break;
+            case 'armor':
+                if (op === 'add') this.armor += value;
+                break;
+            case 'criticalStrikeChance':
+                if (op === 'add') this.criticalStrikeChance += value;
+                break;
+            case 'maxMana':
+                if (op === 'add') this.maxMana += value;
+                break;
+            case 'manaRegen':
+                if (op === 'add') this.manaRegen += value;
+                break;
+        }
+    }
+
+    public removeStat(stat: PlayerStatName, op: StatOp, value: number) {
+        switch (stat) {
+            case 'bonusAttackDamage':
+                if (op === 'add') this.bonusAttackDamage -= value;
+                break;
+            case 'attackDamageMultiplier':
+                if (op === 'add') this.attackDamageMultiplier -= value;
+                break;
+            case 'attackSpeed':
+                if (op === 'multiply') this.attackCooldown /= (1 - value);
+                break;
+            case 'projectileSpeed':
+                if (op === 'add') this.projectileSpeed -= value;
+                break;
+            case 'criticalStrikeDamage':
+                if (op === 'add') this.criticalStrikeDamage -= value;
+                break;
+            case 'maxHealth':
+                if (op === 'add') this.maxHealth -= value;
+                break;
+            case 'moveSpeed':
+                if (op === 'multiply') this.moveSpeed /= (1 + value);
+                break;
+            case 'projectileCount':
+                if (op === 'add') this.projectileCount -= value;
+                break;
+            case 'healthRegen':
+                if (op === 'set') this.healthRegen = 0;
+                break;
+            case 'lifeSteal':
+                if (op === 'set') this.lifeSteal = 0;
+                break;
+            case 'hasAegis':
+                if (op === 'set') this.hasAegis = false;
+                break;
+            case 'armor':
+                if (op === 'add') this.armor -= value;
+                break;
+            case 'criticalStrikeChance':
+                if (op === 'add') this.criticalStrikeChance -= value;
+                break;
+            case 'maxMana':
+                if (op === 'add') this.maxMana -= value;
+                break;
+            case 'manaRegen':
+                if (op === 'add') this.manaRegen -= value;
+                break;
+        }
+    }
+
+    // Melee stubs - overridden in MeleePlayer, no-ops in BasePlayer
+    public increaseMeleeAttackCount(_amount: number) { /* no-op for ranged */ }
+    public decreaseMeleeAttackCount(_amount: number) { /* no-op for ranged */ }
+    public getMeleeAttackCount(): number { return 0; }
 
     private updateDash(delta: number) {
         if (this.isDashing) {
@@ -570,8 +618,6 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         this.x = Phaser.Math.Clamp(this.x, minX, maxX);
         this.y = Phaser.Math.Clamp(this.y, minY, maxY);
     }
-
-    public abstract useESkill(): void;
 
     protected activateShield() {
         this.shieldActive = true;
@@ -717,10 +763,8 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
             }
             return;
         }
-        console.log('Player died!');
         // Game over logic will be handled by the scene
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         gameScene.gameOver();
     }
 
@@ -737,19 +781,19 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public getQCooldownTimer() {
-        return this.qCooldownTimer;
+        return this.getCooldownTimer('q');
     }
 
     public getECooldownTimer() {
-        return this.eCooldownTimer;
+        return this.getCooldownTimer('e');
     }
 
     public getQCooldown() {
-        return this.qCooldown;
+        return this.getCooldownMax('q');
     }
 
     public getECooldown() {
-        return this.eCooldown;
+        return this.getCooldownMax('e');
     }
 
     public getKnockbackResistance() {
@@ -768,12 +812,21 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         this.hasAdvancedCombo = true;
     }
 
-    public addItem(item: ItemData) {
+    public addItem(item: ItemData): boolean {
+        // Check for duplicate — level up existing item instead
+        const existing = this.items.find(i => i.id === item.id);
+        if (existing) {
+            existing.level = (existing.level || 1) + 1;
+            this.recalculateStats();
+            return true; // leveled up
+        }
+
         if (this.items.length >= this.maxItems) {
-            return;
+            return false;
         }
         this.items.push(item);
         this.recalculateStats();
+        return false; // new item
     }
 
     public removeItem(item: ItemData) {
@@ -797,11 +850,16 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         this.projectileCount = 1;
         this.moveSpeed = 200;
         this.attackCooldown = 1000;
+        this.maxMana = this.baseMana;
+        this.manaRegen = this.baseManaRegen;
 
-        // Apply item effects
+        // Apply item effects (scaled by level)
         this.items.forEach(item => {
             if (item.applyEffect) {
-                item.applyEffect(this);
+                const level = item.level || 1;
+                for (let i = 0; i < level; i++) {
+                    item.applyEffect(this);
+                }
             }
         });
 
@@ -810,6 +868,12 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         const upgradeManager = gameScene.getUpgradeManager();
         if (upgradeManager) {
             upgradeManager.reapplyUpgrades(this);
+        }
+
+        // Ensure maxHealth never goes below 1
+        this.maxHealth = Math.max(1, this.maxHealth);
+        if (this.health > this.maxHealth) {
+            this.health = this.maxHealth;
         }
 
         // Final calculation
@@ -906,11 +970,11 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
     
     public getDashCooldownTimer(): number {
-        return this.dashCooldownTimer;
+        return this.getCooldownTimer('dash');
     }
-    
+
     public getDashCooldown(): number {
-        return this.dashCooldown;
+        return this.getCooldownMax('dash');
     }
     
     public isDashSkillUnlocked(): boolean {
@@ -977,6 +1041,14 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         this.xpMultiplier = multiplier;
     }
 
+    public getXPMagnetRange(): number {
+        return this.xpMagnetRange;
+    }
+
+    public setXPMagnetRange(range: number) {
+        this.xpMagnetRange = range;
+    }
+
     public getQDamageToNormalMultiplier() {
         return this.qDamageToNormalMultiplier;
     }
@@ -990,7 +1062,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public setECooldown(cooldown: number) {
-        this.eCooldown = cooldown;
+        this.setCooldownMax('e', cooldown);
     }
 
     public getOriginalECooldown(): number {
@@ -998,11 +1070,11 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public setRCooldown(cooldown: number) {
-        this.rCooldown = cooldown;
+        this.setCooldownMax('r', cooldown);
     }
 
     public getRCooldown(): number {
-        return this.rCooldown;
+        return this.getCooldownMax('r');
     }
 
     public getOriginalRCooldown(): number {
@@ -1010,7 +1082,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public getRCooldownTimer(): number {
-        return this.rCooldownTimer;
+        return this.getCooldownTimer('r');
     }
 
     public isFSkillUnlocked(): boolean {
@@ -1018,11 +1090,11 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public getFCooldown(): number {
-        return this.fCooldown;
+        return this.getCooldownMax('f');
     }
 
     public setFCooldown(cooldown: number) {
-        this.fCooldown = cooldown;
+        this.setCooldownMax('f', cooldown);
     }
 
     public getOriginalFCooldown(): number {
@@ -1034,11 +1106,11 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public useFSkill() {
-        if (!this.fSkillUnlocked || this.fCooldownTimer > 0) {
+        if (!this.fSkillUnlocked || this.getCooldownTimer('f') > 0) {
             return;
         }
 
-        this.fCooldownTimer = this.fCooldown;
+        this.startCooldown('f');
 
         const gameScene = this.scene as GameScene;
         const pet = new Pet(gameScene, this.x, this.y, this, 20000);
@@ -1046,9 +1118,9 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public useDashSkill() {
-        if (!this.dashSkillUnlocked || this.dashCooldownTimer > 0 || this.isDashing) return;
-        
-        this.dashCooldownTimer = this.dashCooldown;
+        if (!this.dashSkillUnlocked || this.getCooldownTimer('dash') > 0 || this.isDashing) return;
+
+        this.startCooldown('dash');
         this.isDashing = true;
         this.dashTimer = 0;
         
@@ -1147,15 +1219,32 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     }
 
     public getFCooldownTimer() {
-        return this.fCooldownTimer;
+        return this.getCooldownTimer('f');
     }
 
     public increaseAttackDamage(multiplier: number) {
         this.baseAttackDamage *= multiplier;
         this.recalculateStats();
     }
-    
+
     public getArmorPerLevelUp(): number {
         return this.armorPerLevelUp;
     }
+
+    // Public setters for properties UpgradeManager needs
+    public setAttackCooldownMultiplier(multiplier: number) {
+        this.attackCooldown *= multiplier;
+        this.attackCooldown = Math.max(100, this.attackCooldown);
+    }
+
+    public setHealOverTime(enabled: boolean) {
+        this.healOverTime = enabled;
+    }
+
+    public setPiercing(enabled: boolean) {
+        this.piercing = enabled;
+    }
+
+    public getMana(): number { return this.mana; }
+    public getMaxMana(): number { return this.maxMana; }
 } 

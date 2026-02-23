@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { UpgradeManager } from '../systems/UpgradeManager';
+import { t } from '../i18n/i18n';
 
 interface UISceneData {
     level: number;
@@ -7,6 +8,7 @@ interface UISceneData {
     isGameOver?: boolean;
     isGameClear?: boolean;
     gameTime?: number;
+    rerollsRemaining?: number;
 }
 
 export class UIScene extends Phaser.Scene {
@@ -16,6 +18,9 @@ export class UIScene extends Phaser.Scene {
     private isGameOver: boolean = false;
     private isGameClear: boolean = false;
     private gameTime: number = 0;
+    private rerollsRemaining: number = 0;
+    private cardRerollUsed: boolean[] = [false, false, false];
+    private currentUpgrades: any[] = [];
 
     constructor() {
         super({ key: 'UIScene' });
@@ -27,14 +32,15 @@ export class UIScene extends Phaser.Scene {
         this.isGameOver = data.isGameOver || false;
         this.isGameClear = data.isGameClear || false;
         this.gameTime = data.gameTime || 0;
+        this.rerollsRemaining = data.rerollsRemaining || 0;
     }
 
     create() {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
-        
+
         // Create background overlay
-        const overlay = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.8).setDepth(2000);
+        this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.8).setDepth(2000);
 
         if (this.isGameClear) {
             this.createGameClearScreen();
@@ -49,7 +55,7 @@ export class UIScene extends Phaser.Scene {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        const title = this.add.text(screenWidth / 2, screenHeight * 0.3, 'GAME CLEAR', {
+        this.add.text(screenWidth / 2, screenHeight * 0.3, t('ui.game_clear'), {
             fontSize: '72px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ff88',
@@ -58,9 +64,9 @@ export class UIScene extends Phaser.Scene {
 
         const minutes = Math.floor(this.gameTime / 60000);
         const seconds = Math.floor((this.gameTime % 60000) / 1000);
-        const timeString = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        const timeString = t('ui.time', { time: `${minutes}:${seconds.toString().padStart(2, '0')}` });
 
-        const timeText = this.add.text(screenWidth / 2, screenHeight * 0.5, timeString, {
+        this.add.text(screenWidth / 2, screenHeight * 0.5, timeString, {
             fontSize: '48px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -69,7 +75,7 @@ export class UIScene extends Phaser.Scene {
 
         // Main menu button
         const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
-        const menuText = this.add.text(0, 0, 'Main Menu', {
+        const menuText = this.add.text(0, 0, t('ui.main_menu'), {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -99,7 +105,7 @@ export class UIScene extends Phaser.Scene {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        const title = this.add.text(screenWidth / 2, screenHeight * 0.3, 'GAME OVER', {
+        this.add.text(screenWidth / 2, screenHeight * 0.3, t('ui.game_over'), {
             fontSize: '72px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ff0000',
@@ -108,7 +114,7 @@ export class UIScene extends Phaser.Scene {
 
         // Restart button
         const restartRect = this.add.rectangle(0, 0, 200, 60, 0x00ff88);
-        const restartText = this.add.text(0, 0, 'Restart', {
+        const restartText = this.add.text(0, 0, t('ui.restart'), {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#000000',
@@ -118,7 +124,7 @@ export class UIScene extends Phaser.Scene {
 
         // Main menu button
         const menuRect = this.add.rectangle(0, 0, 200, 60, 0xff4444);
-        const menuText = this.add.text(0, 0, 'Main Menu', {
+        const menuText = this.add.text(0, 0, t('ui.main_menu'), {
             fontSize: '24px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff',
@@ -166,45 +172,55 @@ export class UIScene extends Phaser.Scene {
     private createLevelUpScreen() {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
-        
+
         // Level up title
-        const title = this.add.text(screenWidth / 2, screenHeight * 0.2, `LEVEL ${this.level}!`, {
+        this.add.text(screenWidth / 2, screenHeight * 0.2, t('ui.level_up', { level: this.level }), {
             fontSize: '72px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#00ff88',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(2001);
-        
+
         // Subtitle
-        const subtitle = this.add.text(screenWidth / 2, screenHeight * 0.3, 'Choose your upgrade:', {
+        this.add.text(screenWidth / 2, screenHeight * 0.3, t('ui.choose_upgrade'), {
             fontSize: '36px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#ffffff'
         }).setOrigin(0.5).setDepth(2001);
-        
+
         // Get upgrade options
-        const upgrades = this.upgradeManager.getRandomUpgrades(3);
-        
-        // Create upgrade cards
-        const cardSpacing = screenWidth * 0.25;
-        const startX = screenWidth * 0.25;
-        upgrades.forEach((upgrade, index) => {
-            const card = this.createUpgradeCard(upgrade, startX + index * cardSpacing, screenHeight * 0.6);
-            this.upgradeCards.push(card);
-        });
-        
+        this.cardRerollUsed = [false, false, false];
+        this.currentUpgrades = this.upgradeManager.getRandomUpgrades(3);
+        this.showUpgradeCards();
+
         // Setup input
         this.setupInput();
     }
 
-    private createUpgradeCard(upgrade: any, x: number, y: number): Phaser.GameObjects.Container {
+    private showUpgradeCards() {
+        // Clear existing cards
+        this.upgradeCards.forEach(card => card.destroy());
+        this.upgradeCards = [];
+
+        const screenWidth = this.scale.width;
+        const screenHeight = this.scale.height;
+
+        const cardSpacing = screenWidth * 0.25;
+        const startX = screenWidth * 0.25;
+        this.currentUpgrades.forEach((upgrade, index) => {
+            const card = this.createUpgradeCard(upgrade, startX + index * cardSpacing, screenHeight * 0.6, index);
+            this.upgradeCards.push(card);
+        });
+    }
+
+    private createUpgradeCard(upgrade: any, x: number, y: number, cardIndex: number): Phaser.GameObjects.Container {
         const container = this.add.container(x, y).setDepth(2002);
-        
-        // Card background (bigger and more vibrant)
+
+        // Card background
         const background = this.add.rectangle(0, 0, 320, 400, 0x1a1a2e);
         const border = this.add.rectangle(0, 0, 320, 400, 0x16213e, 0);
         border.setStrokeStyle(5, 0x0f3460);
-        
+
         // Rarity-based colors
         const rarityColors: { [key: string]: string } = {
             common: '#ffffff',
@@ -212,53 +228,105 @@ export class UIScene extends Phaser.Scene {
             epic: '#9966ff',
             legendary: '#ff6600'
         };
-        
-        // Upgrade title (bigger and colored by rarity)
-        const title = this.add.text(0, -140, upgrade.name, {
+
+        // Upgrade title — translate at display time
+        const displayName = t(`upgrade.${upgrade.id}.name`);
+        const title = this.add.text(0, -140, displayName, {
             fontSize: '28px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: rarityColors[upgrade.rarity] || '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-        
-        // Upgrade description (bigger text)
-        const description = this.add.text(0, -80, upgrade.description, {
+
+        // Upgrade description — translate at display time
+        const displayDesc = t(`upgrade.${upgrade.id}.desc`);
+        const description = this.add.text(0, -80, displayDesc, {
             fontSize: '20px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: '#e0e0e0',
             wordWrap: { width: 280 }
         }).setOrigin(0.5);
-        
-        // Rarity indicator
-        const rarityText = this.add.text(0, 140, upgrade.rarity.toUpperCase(), {
+
+        // Rarity indicator — translate
+        const rarityText = this.add.text(0, 120, t(`rarity.${upgrade.rarity}`), {
             fontSize: '18px',
             fontFamily: 'Helvetica, Arial, sans-serif',
             color: rarityColors[upgrade.rarity] || '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-        
-        // Add all elements to container
+
         container.add([background, border, title, description, rarityText]);
-        
-        // Make interactive (left click only)
+
+        // Per-card reroll button at bottom of card
+        const rerollBtnRect = this.add.rectangle(0, 170, 140, 35, 0x334455);
+        rerollBtnRect.setStrokeStyle(2, 0x5588aa);
+        const rerollBtnText = this.add.text(0, 170, t('ui.reroll'), {
+            fontSize: '16px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#88ccff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        container.add([rerollBtnRect, rerollBtnText]);
+
+        rerollBtnRect.setInteractive();
+        rerollBtnRect.on('pointerover', () => {
+            if (!this.cardRerollUsed[cardIndex] && this.rerollsRemaining > 0) {
+                rerollBtnRect.setFillStyle(0x445566);
+            }
+        });
+        rerollBtnRect.on('pointerout', () => {
+            if (!this.cardRerollUsed[cardIndex]) {
+                rerollBtnRect.setFillStyle(0x334455);
+            }
+        });
+        rerollBtnRect.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            pointer.event.stopPropagation();
+            if (this.cardRerollUsed[cardIndex] || this.rerollsRemaining <= 0) return;
+
+            this.cardRerollUsed[cardIndex] = true;
+            this.rerollsRemaining--;
+
+            // Gray out button
+            rerollBtnRect.setFillStyle(0x222222);
+            rerollBtnRect.setStrokeStyle(2, 0x333333);
+            rerollBtnText.setColor('#555555');
+            rerollBtnText.setText(t('ui.reroll_used'));
+
+            // Re-randomize only this card
+            const newUpgrades = this.upgradeManager.getRandomUpgrades(1);
+            if (newUpgrades.length > 0) {
+                this.currentUpgrades[cardIndex] = newUpgrades[0];
+            }
+            this.showUpgradeCards();
+        });
+
+        // If already used or no rerolls, gray it out
+        if (this.cardRerollUsed[cardIndex] || this.rerollsRemaining <= 0) {
+            rerollBtnRect.setFillStyle(0x222222);
+            rerollBtnRect.setStrokeStyle(2, 0x333333);
+            rerollBtnText.setColor('#555555');
+            rerollBtnText.setText(this.cardRerollUsed[cardIndex] ? t('ui.reroll_used') : t('ui.reroll_none'));
+        }
+
+        // Make card background interactive (left click to select)
         background.setInteractive();
         background.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
             if (pointer.leftButtonDown()) {
                 this.selectUpgrade(upgrade);
             }
         });
-        
-        // Hover effects (more vibrant)
+
+        // Hover effects
         background.on('pointerover', () => {
             background.setFillStyle(0x2a2a4e);
             border.setStrokeStyle(5, 0x1a5490);
         });
-        
+
         background.on('pointerout', () => {
             background.setFillStyle(0x1a1a2e);
             border.setStrokeStyle(5, 0x0f3460);
         });
-        
+
         return container;
     }
 
@@ -282,4 +350,4 @@ export class UIScene extends Phaser.Scene {
         // Only allow clicking on upgrade cards - no auto-selection
         // The UI will stay until player makes a choice
     }
-} 
+}

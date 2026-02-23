@@ -1,33 +1,43 @@
 import { GameScene } from '../scenes/GameScene';
+import { t } from '../i18n/i18n';
 import { TankEnemy } from '../entities/TankEnemy';
 import { RangedEnemy } from '../entities/RangedEnemy';
 import { BossEnemy } from '../entities/BossEnemy';
+import { DasherEnemy } from '../entities/DasherEnemy';
+import { SplitterEnemy } from '../entities/SplitterEnemy';
+import { ShieldedEnemy } from '../entities/ShieldedEnemy';
+import { SummonerEnemy } from '../entities/SummonerEnemy';
+import { BomberEnemy } from '../entities/BomberEnemy';
+import { BruteBoss } from '../entities/bosses/BruteBoss';
+import { SwarmBoss } from '../entities/bosses/SwarmBoss';
+import { PhaseShifterBoss } from '../entities/bosses/PhaseShifterBoss';
+import { TeleporterBoss } from '../entities/bosses/TeleporterBoss';
+import { FinalBoss } from '../entities/bosses/FinalBoss';
+import { SPAWN_DISTANCE, MAX_ENEMIES_ON_SCREEN } from '../GameConstants';
 
 export class EnemySpawner {
     private scene: GameScene;
-    private spawnTimer: number = 0;
-    private spawnInterval: number = 1500; // Faster spawning (1.5 seconds)
+    private spawnInterval: number = 2500;
     private waveNumber: number = 1;
-    private enemiesPerWave: number = 5; // More enemies per wave
-    private bossSpawnInterval: number = 1; // Boss every 1 waves (4, 8, 12, ...) for debugging
-    private bossActive: boolean = false; // Track if boss is currently active
-    
+    private enemiesPerWave: number = 5;
+    private bossActive: boolean = false;
+    private spawnEvent: Phaser.Time.TimerEvent | null = null;
+
     // Wave system based on kills
     private enemiesKilledThisWave: number = 0;
-    private enemiesToKillPerWave: number = 10; // Kill 10 enemies to advance wave
-    
+    private enemiesToKillPerWave: number = 10;
+
     // Difficulty scaling
     private difficultyMultiplier: number = 1.0;
-    private maxEnemiesOnScreen: number = 35; // More enemies on screen at once
-    private spawnMultiplier: number = 2; // Spawn 2 groups per wave
+    private maxEnemiesOnScreen: number = MAX_ENEMIES_ON_SCREEN;
+    private spawnMultiplier: number = 1;
 
     constructor(scene: GameScene) {
         this.scene = scene;
     }
 
     public startSpawning() {
-        // Start the spawn timer
-        this.scene.time.addEvent({
+        this.spawnEvent = this.scene.time.addEvent({
             delay: this.spawnInterval,
             callback: this.spawnWave,
             callbackScope: this,
@@ -43,58 +53,78 @@ export class EnemySpawner {
 
     private spawnWave() {
         const currentEnemies = this.scene.getEnemies().getChildren().length;
-        
-        // Don't spawn if too many enemies on screen or boss is active
-        if (currentEnemies >= this.maxEnemiesOnScreen || this.bossActive) {
+
+        if (currentEnemies >= this.maxEnemiesOnScreen) {
             return;
         }
 
-        // Determine enemy types for this wave
         const enemyTypes = this.getEnemyTypesForWave();
-        
-        // Spawn enemies around the player
-        for (let i = 0; i < this.spawnMultiplier; i++) {
-            enemyTypes.forEach((type, index) => {
+
+        // During boss fights, spawn at half rate
+        const multiplier = this.bossActive ? Math.max(1, Math.floor(this.spawnMultiplier / 2)) : this.spawnMultiplier;
+        const typesToSpawn = this.bossActive ? enemyTypes.slice(0, Math.ceil(enemyTypes.length / 2)) : enemyTypes;
+
+        for (let i = 0; i < multiplier; i++) {
+            typesToSpawn.forEach((type) => {
                 this.spawnEnemy(type);
             });
         }
-        
-        // Note: Wave advancement and boss spawning now handled by kill count in onEnemyKilled()
     }
 
     private getEnemyTypesForWave(): string[] {
         const types: string[] = [];
         const enemyCount = this.enemiesPerWave + Math.floor(this.waveNumber / 5);
-        
+
         for (let i = 0; i < enemyCount; i++) {
             const rand = Math.random();
-            
-            if (this.waveNumber >= 15 && rand < 0.1) {
+
+            if (this.waveNumber >= 15 && rand < 0.05) {
                 types.push('boss');
-            } else if (this.waveNumber >= 1 && rand < 0.4) {
+            } else if (this.waveNumber >= 7 && rand < 0.15) {
+                // Shielded or summoner
+                types.push(Math.random() < 0.5 ? 'shielded' : 'summoner');
+            } else if (this.waveNumber >= 5 && rand < 0.25) {
+                // Tank or splitter
+                types.push(Math.random() < 0.5 ? 'tank' : 'splitter');
+            } else if (this.waveNumber >= 3 && rand < 0.35) {
+                // Dasher or bomber
+                types.push(Math.random() < 0.5 ? 'dasher' : 'bomber');
+            } else if (rand < 0.4) {
                 types.push('ranged');
-            } else if (this.waveNumber >= 5 && rand < 0.3) {
-                types.push('tank');
             } else {
                 types.push('basic');
             }
         }
-        
+
         return types;
     }
 
     private spawnEnemy(type: string) {
-        // Spawn position around player
         const spawnPosition = this.getRandomSpawnPosition();
-        
+
         let enemy;
-        
+
         switch (type) {
             case 'tank':
                 enemy = new TankEnemy(this.scene, spawnPosition.x, spawnPosition.y);
                 break;
             case 'ranged':
                 enemy = new RangedEnemy(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 'dasher':
+                enemy = new DasherEnemy(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 'splitter':
+                enemy = new SplitterEnemy(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 'shielded':
+                enemy = new ShieldedEnemy(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 'summoner':
+                enemy = new SummonerEnemy(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 'bomber':
+                enemy = new BomberEnemy(this.scene, spawnPosition.x, spawnPosition.y);
                 break;
             case 'boss':
                 enemy = new TankEnemy(this.scene, spawnPosition.x, spawnPosition.y);
@@ -104,81 +134,88 @@ export class EnemySpawner {
                 enemy = new TankEnemy(this.scene, spawnPosition.x, spawnPosition.y);
                 break;
         }
-        
+
+        // Elite chance (not for bosses)
+        if (!enemy.isBossEnemy()) {
+            const eliteChance = this.waveNumber >= 5 ? 0.15 : 0.10;
+            if (Math.random() < eliteChance) {
+                enemy.makeElite();
+            }
+        }
+
         this.scene.getEnemies().add(enemy);
     }
 
     private spawnBoss() {
-        // Set boss as active to stop regular enemy spawning
         this.bossActive = true;
-        
-        // Spawn boss around player
+
         const spawnPosition = this.getRandomSpawnPosition();
-        
-        const boss = new BossEnemy(
-            this.scene,
-            spawnPosition.x,
-            spawnPosition.y
-        );
-        
+
+        let boss;
+
+        // Select boss based on wave number
+        switch (this.waveNumber) {
+            case 3:
+                boss = new BruteBoss(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 5:
+                boss = new SwarmBoss(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 7:
+                boss = new PhaseShifterBoss(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 9:
+                boss = new TeleporterBoss(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            case 11:
+                boss = new FinalBoss(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+            default:
+                // For wave 13+, use random boss or fallback to BossEnemy
+                boss = new BossEnemy(this.scene, spawnPosition.x, spawnPosition.y);
+                break;
+        }
+
         this.scene.getEnemies().add(boss);
-        
-        // Show boss announcement
         this.showBossAnnouncement();
     }
-    
+
     public onBossDefeated() {
-        // Re-enable regular enemy spawning
         this.bossActive = false;
-        console.log('Boss defeated! Regular enemy spawning resumed.');
     }
-    
+
     public onEnemyKilled() {
         this.enemiesKilledThisWave++;
-        
-        // Check if wave should advance
+
         if (this.enemiesKilledThisWave >= this.enemiesToKillPerWave) {
             this.advanceWave();
         }
     }
-    
+
     private advanceWave() {
         this.waveNumber++;
         this.enemiesKilledThisWave = 0;
-        
+
         this.enemiesToKillPerWave = 10 + Math.floor((this.waveNumber - 1) * 2.5);
 
-        // Update wave display
         this.updateWaveDisplay();
-        
+
         // Check for boss spawn
         if (this.waveNumber === 3 || (this.waveNumber > 3 && (this.waveNumber - 3) % 2 === 0)) {
             this.spawnBoss();
         }
-        
-        // Increase difficulty
+
         this.updateDifficulty();
-        
-        console.log(`Wave ${this.waveNumber} started! Enemies killed: 0/${this.enemiesToKillPerWave}`);
     }
-    
+
     private updateWaveDisplay() {
-        // Update the wave counter UI
-        // This will be handled by the GameScene
-        const gameScene = this.scene as any;
-        if (gameScene.updateWaveCounter) {
-            gameScene.updateWaveCounter(
-                this.waveNumber, 
-                this.enemiesKilledThisWave, 
-                this.enemiesToKillPerWave
-            );
-        }
+        this.scene.updateWaveCounter(this.waveNumber);
     }
-    
+
     public getEnemiesKilledThisWave(): number {
         return this.enemiesKilledThisWave;
     }
-    
+
     public getEnemiesToKillPerWave(): number {
         return this.enemiesToKillPerWave;
     }
@@ -188,27 +225,27 @@ export class EnemySpawner {
         if (!player) {
             return { x: 0, y: 0 };
         }
-        
+
         const playerX = player.getX();
         const playerY = player.getY();
-        const spawnDistance = 700; // Distance from player - within enemy detection range (800px)
+        const spawnDistance = SPAWN_DISTANCE;
         const side = Math.floor(Math.random() * 4);
         let x: number, y: number;
-        
+
         switch (side) {
-            case 0: // Top of player
+            case 0:
                 x = playerX + (Math.random() - 0.5) * spawnDistance * 2;
                 y = playerY - spawnDistance;
                 break;
-            case 1: // Right of player
+            case 1:
                 x = playerX + spawnDistance;
                 y = playerY + (Math.random() - 0.5) * spawnDistance * 2;
                 break;
-            case 2: // Bottom of player
+            case 2:
                 x = playerX + (Math.random() - 0.5) * spawnDistance * 2;
                 y = playerY + spawnDistance;
                 break;
-            case 3: // Left of player
+            case 3:
                 x = playerX - spawnDistance;
                 y = playerY + (Math.random() - 0.5) * spawnDistance * 2;
                 break;
@@ -216,18 +253,17 @@ export class EnemySpawner {
                 x = playerX;
                 y = playerY;
         }
-        
+
         return { x, y };
     }
 
     private showBossAnnouncement() {
-        const announcement = this.scene.add.text(this.scene.scale.width / 2, 150, 'BOSS INCOMING!', {
+        const announcement = this.scene.add.text(this.scene.scale.width / 2, 150, t('boss.incoming'), {
             fontSize: '32px',
             color: '#ff0000',
             fontStyle: 'bold'
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(1500); // Fixed to UI with high depth
-        
-        // Animate the announcement
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1500);
+
         this.scene.tweens.add({
             targets: announcement,
             scaleX: 1.5,
@@ -242,25 +278,23 @@ export class EnemySpawner {
     }
 
     private updateDifficulty() {
-        // Increase difficulty over time
         this.difficultyMultiplier = 1 + (this.waveNumber - 1) * 0.1;
-        
-        // Decrease spawn interval (faster spawning)
+
         if (this.waveNumber <= 3) {
-            this.spawnInterval = 3000 - (this.waveNumber - 1) * 200; // Slower start
+            this.spawnInterval = 3500 - (this.waveNumber - 1) * 200;
         } else if (this.waveNumber <= 10) {
-            this.spawnInterval = 2400 - (this.waveNumber - 3) * 150; // Moderate increase
+            this.spawnInterval = 3100 - (this.waveNumber - 3) * 150;
         } else {
-            this.spawnInterval = 1350 - (this.waveNumber - 10) * 50; // Faster increase
+            this.spawnInterval = 2050 - (this.waveNumber - 10) * 50;
         }
-        this.spawnInterval = Math.max(200, this.spawnInterval); // Minimum spawn interval
-        
-        // Increase max enemies
-        this.maxEnemiesOnScreen = Math.min(50, 20 + Math.floor(this.waveNumber / 5));
-        
-        // Update spawn timer
-        this.scene.time.removeAllEvents();
-        this.scene.time.addEvent({
+        this.spawnInterval = Math.max(500, this.spawnInterval);
+
+        this.maxEnemiesOnScreen = Math.min(30, 15 + Math.floor(this.waveNumber / 3));
+
+        if (this.spawnEvent) {
+            this.spawnEvent.remove();
+        }
+        this.spawnEvent = this.scene.time.addEvent({
             delay: this.spawnInterval,
             callback: this.spawnWave,
             callbackScope: this,
@@ -277,7 +311,10 @@ export class EnemySpawner {
     }
 
     public pauseSpawning() {
-        this.scene.time.removeAllEvents();
+        if (this.spawnEvent) {
+            this.spawnEvent.remove();
+            this.spawnEvent = null;
+        }
     }
 
     public resumeSpawning() {
@@ -291,4 +328,4 @@ export class EnemySpawner {
     public setSpawnMultiplier(multiplier: number) {
         this.spawnMultiplier = multiplier;
     }
-} 
+}

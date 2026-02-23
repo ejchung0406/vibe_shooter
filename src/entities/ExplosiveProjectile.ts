@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
+import { GameSceneInterface } from '../types/GameSceneInterface';
 
 export class ExplosiveProjectile extends Phaser.GameObjects.Container {
     private sprite!: Phaser.GameObjects.Rectangle;
     private velocityX: number = 0;
     private velocityY: number = 0;
     private damage: number = 20;
-    private speed: number = 300;
     private piercing: boolean = false;
     private lifetime: number = 3000;
     private age: number = 0;
@@ -29,14 +29,30 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         super(scene, x, y);
         
         this.damage = damage;
-        this.speed = speed;
         this.piercing = piercing;
         this.isCritical = isCritical;
         
-        // Create larger explosive projectile sprite (orange/red)
-        this.sprite = scene.add.rectangle(0, 0, 16, 16, 0xff4400);
+        // Create explosive projectile visual (circle + inner core + sparks)
+        const glow = scene.add.graphics();
+        glow.fillStyle(0xff6600, 0.3);
+        glow.fillCircle(0, 0, 12);
+        this.add(glow);
+        this.sprite = scene.add.rectangle(0, 0, 12, 12, 0xff4400);
         this.sprite.setStrokeStyle(2, 0xff8800);
         this.add(this.sprite);
+        const core = scene.add.graphics();
+        core.fillStyle(0xff0000, 0.8);
+        core.fillCircle(0, 0, 4);
+        // Spark lines
+        core.lineStyle(1, 0xffaa00, 0.7);
+        for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2;
+            core.beginPath();
+            core.moveTo(Math.cos(a) * 5, Math.sin(a) * 5);
+            core.lineTo(Math.cos(a) * 9, Math.sin(a) * 9);
+            core.strokePath();
+        }
+        this.add(core);
         
         // Set velocity based on angle
         this.velocityX = Math.cos(angle) * speed;
@@ -69,7 +85,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         });
     }
 
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         this.age += delta;
         
         // Destroy if too old
@@ -84,17 +100,22 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
     }
 
     private setupCollisions() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
-        this.scene.physics.world.on('worldbounds', (body: any) => {
+        const gameScene = this.scene as GameSceneInterface;
+
+        const onWorldBounds = (body: any) => {
             if (body.gameObject === this) {
                 this.destroy();
             }
+        };
+        this.scene.physics.world.on('worldbounds', onWorldBounds);
+
+        // Clean up listener when destroyed to prevent memory leak
+        this.on('destroy', () => {
+            gameScene.physics?.world?.off('worldbounds', onWorldBounds);
         });
 
         // Check collision with enemies
-        scene.physics.add.overlap(
+        gameScene.physics.add.overlap(
             this,
             gameScene.getEnemies(),
             this.onEnemyHit,
@@ -103,7 +124,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         );
     }
 
-    private onEnemyHit(projectile: any, enemy: any) {
+    private onEnemyHit(_projectile: any, _enemy: any) {
         // Create explosion at impact point
         this.createExplosion();
         
@@ -112,15 +133,14 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
     }
 
     private createExplosion() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
+        const gameScene = this.scene as GameSceneInterface;
+
         // Create explosion visual effect
-        const explosion = scene.add.circle(this.x, this.y, this.explosionRadius, 0xff4400, 0.6);
+        const explosion = gameScene.add.circle(this.x, this.y, this.explosionRadius, 0xff4400, 0.6);
         explosion.setStrokeStyle(4, 0xff8800);
         
         // Animate explosion
-        scene.tweens.add({
+        gameScene.tweens.add({
             targets: explosion,
             scaleX: 1.5,
             scaleY: 1.5,
@@ -168,7 +188,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
         // Create particle effects
         for (let i = 0; i < 8; i++) {
             const angle = (i / 8) * Math.PI * 2;
-            const particle = scene.add.rectangle(
+            const particle = gameScene.add.rectangle(
                 this.x + Math.cos(angle) * 20,
                 this.y + Math.sin(angle) * 20,
                 6,
@@ -176,7 +196,7 @@ export class ExplosiveProjectile extends Phaser.GameObjects.Container {
                 0xff6600
             );
             
-            scene.tweens.add({
+            gameScene.tweens.add({
                 targets: particle,
                 x: particle.x + Math.cos(angle) * 60,
                 y: particle.y + Math.sin(angle) * 60,

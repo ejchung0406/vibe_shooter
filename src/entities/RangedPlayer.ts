@@ -2,12 +2,22 @@ import { BasePlayer } from './BasePlayer';
 import { Projectile } from './Projectile';
 import { ExplosiveProjectile } from './ExplosiveProjectile';
 import { QProjectile } from './QProjectile';
-import { GameScene } from '../scenes/GameScene';
-import { Pet } from './Pet';
+import { GameSceneInterface } from '../types/GameSceneInterface';
 
 export class RangedPlayer extends BasePlayer {
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
+
+        // Top-down gun barrel (points up)
+        const gun = scene.add.graphics();
+        gun.fillStyle(0x555555);
+        gun.fillRect(-2, -18, 4, 10);
+        gun.fillStyle(0x777777);
+        gun.fillRect(-1, -18, 2, 10);
+        // Scope dot at tip
+        gun.fillStyle(0xff0000);
+        gun.fillCircle(0, -19, 1.5);
+        this.add(gun);
     }
 
     public attack(): void {
@@ -16,10 +26,9 @@ export class RangedPlayer extends BasePlayer {
         this.isAttacking = true;
         this.attackPauseTimer = 0;
 
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
-        const mousePointer = scene.input.activePointer;
+        const mousePointer = gameScene.input.activePointer;
         const mouseX = mousePointer.worldX;
         const mouseY = mousePointer.worldY;
 
@@ -28,7 +37,7 @@ export class RangedPlayer extends BasePlayer {
 
         enemies.forEach((enemy: any) => {
             const dx = mouseX - enemy.x;
-            const dy = enemy.y - this.y;
+            const dy = mouseY - enemy.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < 30) {
@@ -47,7 +56,7 @@ export class RangedPlayer extends BasePlayer {
             if (isComboShot) {
                 const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                 const projectile = new ExplosiveProjectile(
-                    scene,
+                    gameScene,
                     this.x,
                     this.y,
                     damage, // Double damage
@@ -62,7 +71,7 @@ export class RangedPlayer extends BasePlayer {
             } else {
                 const { damage, isCritical } = this.calculateDamage(this.attackDamage);
                 const projectile = new Projectile(
-                    scene,
+                    gameScene,
                     this.x,
                     this.y,
                     damage,
@@ -77,18 +86,18 @@ export class RangedPlayer extends BasePlayer {
         } else {
             this.shotCounter++;
             const isComboShot = this.hasAdvancedCombo ? this.shotCounter % 2 === 0 : (this.hasComboMaster && this.shotCounter % 3 === 0);
-            this.performBurstAttack(scene, gameScene, angle, isComboShot, isHoming);
+            this.performBurstAttack(gameScene, angle, isComboShot, isHoming);
         }
     }
 
-    private performBurstAttack(scene: Phaser.Scene, gameScene: any, angle: number, isComboShot: boolean = false, isHoming: boolean = false) {
+    private performBurstAttack(gameScene: GameSceneInterface, angle: number, isComboShot: boolean = false, isHoming: boolean = false) {
         for (let i = 0; i < this.projectileCount; i++) {
-            scene.time.delayedCall(i * 50, () => { // 50ms delay between shots
+            gameScene.time.delayedCall(i * 50, () => { // 50ms delay between shots
                 let projectile;
                 if (isComboShot && i === 0) { // Make first projectile explosive for combo
                     const { damage, isCritical } = this.calculateDamage(this.attackDamage * 2);
                     projectile = new ExplosiveProjectile(
-                        scene,
+                        gameScene,
                         this.x,
                         this.y,
                         damage,
@@ -102,7 +111,7 @@ export class RangedPlayer extends BasePlayer {
                 } else {
                     const { damage, isCritical } = this.calculateDamage(this.attackDamage);
                     projectile = new Projectile(
-                        scene,
+                        gameScene,
                         this.x,
                         this.y,
                         damage,
@@ -120,12 +129,11 @@ export class RangedPlayer extends BasePlayer {
     }
 
     public useQSkill(): void {
-        if (!this.qSkillUnlocked || this.qCooldownTimer > 0) return;
+        if (!this.qSkillUnlocked || this.getCooldownTimer('q') > 0) return;
 
-        this.qCooldownTimer = this.qCooldown;
+        this.startCooldown('q');
 
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
         const enemies = gameScene.getEnemies().getChildren();
         const nearbyEnemies: any[] = [];
@@ -146,7 +154,7 @@ export class RangedPlayer extends BasePlayer {
         });
 
         if (nearbyEnemies.length === 0) {
-            this.qCooldownTimer = 0;
+            this.cooldowns.get('q')!.timer = 0;
             return;
         }
 
@@ -174,7 +182,7 @@ export class RangedPlayer extends BasePlayer {
                     const { damage: finalDamage, isCritical } = this.calculateDamage(damage);
 
                     const projectile = new QProjectile(
-                        scene,
+                        gameScene,
                         this.x + offsetX,
                         this.y + offsetY,
                         finalDamage,
@@ -190,24 +198,23 @@ export class RangedPlayer extends BasePlayer {
     }
 
     public useRSkill(): void {
-        if (!this.rSkillUnlocked || this.rCooldownTimer > 0) return;
+        if (!this.rSkillUnlocked || this.getCooldownTimer('r') > 0) return;
 
-        this.rCooldownTimer = this.rCooldown;
+        this.startCooldown('r');
 
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
 
-        const mousePointer = scene.input.activePointer;
+        const mousePointer = gameScene.input.activePointer;
         const mouseX = mousePointer.worldX;
         const mouseY = mousePointer.worldY;
 
         const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
 
         for (let i = 0; i < 7 * this.rProjectileMultiplier; i++) {
-            scene.time.delayedCall(i * 50 / this.rProjectileMultiplier, () => {
+            gameScene.time.delayedCall(i * 50 / this.rProjectileMultiplier, () => {
                 const { damage, isCritical } = this.calculateDamage(this.attackDamage * 1.5);
                 const projectile = new ExplosiveProjectile(
-                    scene,
+                    gameScene,
                     this.x,
                     this.y,
                     damage,
@@ -224,26 +231,4 @@ export class RangedPlayer extends BasePlayer {
         }
     }
 
-    public useESkill(): void {
-        if (!this.eSkillUnlocked || this.eCooldownTimer > 0 || this.shieldActive) return;
-        
-        this.eCooldownTimer = this.eCooldown;
-        this.activateShield();
-
-        if (this.eSkillHeals) {
-            this.heal(this.maxHealth * 0.1);
-        }
-    }
-
-    public useFSkill(): void {
-        if (!this.fSkillUnlocked || this.fCooldownTimer > 0) {
-            return;
-        }
-
-        this.fCooldownTimer = this.fCooldown;
-
-        const gameScene = this.scene as GameScene;
-        const pet = new Pet(gameScene, this.x, this.y, this, 20000);
-        gameScene.addPet(pet);
-    }
 }

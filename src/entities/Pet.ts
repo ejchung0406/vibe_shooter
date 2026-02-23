@@ -14,13 +14,40 @@ export class Pet extends Phaser.GameObjects.Container {
         this.owner = owner;
         this.lifespan = lifespan;
 
-        const sprite = scene.add.rectangle(0, 0, 15, 15, 0x00aaff);
-        this.add(sprite);
+        // Light blue diamond body
+        const diamond = scene.add.rectangle(0, 0, 12, 12, 0x00aaff);
+        diamond.setRotation(Math.PI / 4);
+        this.add(diamond);
+        // Inner pulsing glow
+        const glow = scene.add.graphics();
+        glow.fillStyle(0xffffff, 0.5);
+        glow.fillCircle(0, 0, 4);
+        this.add(glow);
+        scene.tweens.add({
+            targets: glow,
+            alpha: 0.3,
+            duration: 600,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        // Orbiting particle
+        const particle = scene.add.graphics();
+        particle.fillStyle(0x88ddff, 0.7);
+        particle.fillCircle(10, 0, 2);
+        this.add(particle);
+        scene.tweens.add({
+            targets: particle,
+            rotation: Math.PI * 2,
+            duration: 1500,
+            repeat: -1,
+            ease: 'Linear'
+        });
         scene.add.existing(this);
         scene.physics.add.existing(this);
     }
 
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         this.lifeTimer += delta;
         if (this.lifeTimer >= this.lifespan) {
             this.destroy();
@@ -98,7 +125,7 @@ export class Pet extends Phaser.GameObjects.Container {
         });
 
         if (closestEnemy) {
-            this.attack(closestEnemy as any);
+            this.attack(closestEnemy as unknown as { x: number, y: number });
         }
     }
 
@@ -107,9 +134,10 @@ export class Pet extends Phaser.GameObjects.Container {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
         
         const attackDamage = this.owner.getAttackDamage();
-        var projectileCount = this.owner.getProjectileCount()
-        if (this.owner.getMeleeAttackCount) {
-            projectileCount = Math.max(projectileCount, this.owner.getMeleeAttackCount());
+        let projectileCount = this.owner.getProjectileCount();
+        const meleeCount = this.owner.getMeleeAttackCount();
+        if (meleeCount > 0) {
+            projectileCount = Math.max(projectileCount, meleeCount);
         }
         const projectileSpeed = this.owner.getProjectileSpeed();
 

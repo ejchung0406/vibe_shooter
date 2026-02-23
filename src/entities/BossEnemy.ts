@@ -1,7 +1,7 @@
 import { BaseEnemy } from './BaseEnemy';
 import { EnemyProjectile } from './EnemyProjectile';
 import { Item } from './Item';
-import { ItemManager } from '../systems/ItemManager';
+import { GameSceneInterface } from '../types/GameSceneInterface';
 
 export class BossEnemy extends BaseEnemy {
     private singleShotTimer: number = 0;
@@ -31,7 +31,7 @@ export class BossEnemy extends BaseEnemy {
         this.createHealthBar();
 
         // Make boss attack faster if the wave is higher
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const enemySpawner = gameScene.getEnemySpawner();
         if (enemySpawner) {
             this.singleShotCooldown *= (10 - enemySpawner.getWaveNumber()) / 10;
@@ -48,7 +48,7 @@ export class BossEnemy extends BaseEnemy {
         }
     }
 
-    protected customUpdate(time: number, delta: number): void {
+    protected customUpdate(_time: number, delta: number): void {
         this.singleShotTimer += delta;
         this.barrageTimer += delta;
 
@@ -66,11 +66,34 @@ export class BossEnemy extends BaseEnemy {
     }
 
     protected getEnemyColor(): number {
-        return 0x8B0000; // Dark red for boss
+        return 0x8B0000;
+    }
+
+    protected createVisual(): void {
+        const g = this.scene.add.graphics();
+        // Crown spikes
+        g.fillStyle(0xFFD700);
+        g.fillTriangle(-8, -12, -5, -18, -2, -12);
+        g.fillTriangle(-3, -12, 0, -20, 3, -12);
+        g.fillTriangle(2, -12, 5, -18, 8, -12);
+        // Thick armor cross (top-down)
+        g.lineStyle(3, 0x660000, 0.8);
+        g.beginPath();
+        g.moveTo(0, -8); g.lineTo(0, 8);
+        g.moveTo(-8, 0); g.lineTo(8, 0);
+        g.strokePath();
+        // Weapon shapes extending from sides
+        g.fillStyle(0x880000);
+        g.fillRect(-16, -3, 6, 6);
+        g.fillRect(10, -3, 6, 6);
+        // Glow border
+        g.lineStyle(2, 0xFF4400, 0.5);
+        g.strokeRect(-13, -13, 26, 26);
+        this.add(g);
     }
 
     private shootTargetedMissile(): void {
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const player = gameScene.getPlayer();
 
         if (player) {
@@ -102,14 +125,14 @@ export class BossEnemy extends BaseEnemy {
                 200 // Slower barrage missiles
             );
             
-            const gameScene = this.scene as any;
+            const gameScene = this.scene as GameSceneInterface;
             gameScene.getEnemyProjectiles().add(missile);
         }
     }
 
     public die(): void {
         // Notify enemy spawner that boss is defeated
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         gameScene.showBossClearedMessage();
         const enemySpawner = gameScene.getEnemySpawner();
         if (enemySpawner) {
@@ -124,7 +147,7 @@ export class BossEnemy extends BaseEnemy {
     }
 
     private dropItems(): void {
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const itemManager = gameScene.getItemManager();
         if (itemManager) {
             for (let i = 0; i < 3; i++) {

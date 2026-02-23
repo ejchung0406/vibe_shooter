@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
+import { GameSceneInterface } from '../types/GameSceneInterface';
+import { getWaveDamageMultiplier } from '../GameConstants';
 
 export class EnemyProjectile extends Phaser.GameObjects.Container {
     private sprite!: Phaser.GameObjects.Rectangle;
     private velocityX: number = 0;
     private velocityY: number = 0;
     private damage: number = 8;
-    private speed: number = 200;
     private lifetime: number = 3000; // 3 seconds
     private age: number = 0;
 
@@ -20,11 +21,15 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         super(scene, x, y);
         
         this.damage = damage;
-        this.speed = speed;
         
-        // Create projectile sprite (red for enemy projectiles)
-        this.sprite = scene.add.rectangle(0, 0, 6, 6, 0xff0000);
+        // Create enemy projectile visual (red diamond + dark center)
+        this.sprite = scene.add.rectangle(0, 0, 8, 8, 0xff0000);
+        this.sprite.setRotation(Math.PI / 4);
         this.add(this.sprite);
+        const center = scene.add.graphics();
+        center.fillStyle(0x660000);
+        center.fillCircle(0, 0, 2);
+        this.add(center);
         
         // Set velocity based on angle
         this.velocityX = Math.cos(angle) * speed;
@@ -43,7 +48,7 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         this.setupCollisions();
     }
 
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         this.age += delta;
         
         // Destroy if too old
@@ -57,7 +62,7 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         this.y += this.velocityY * (delta / 1000);
         
         // Destroy if out of map bounds
-        const gameScene = this.scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const mapBounds = gameScene.getMapSize() / 2;
         if (this.x < -mapBounds || this.x > mapBounds || this.y < -mapBounds || this.y > mapBounds) {
             this.destroy();
@@ -65,11 +70,10 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
     }
 
     private setupCollisions() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
+        const gameScene = this.scene as GameSceneInterface;
+
         // Check collision with player
-        scene.physics.add.overlap(
+        gameScene.physics.add.overlap(
             this,
             gameScene.getPlayer(),
             this.onPlayerHit,
@@ -78,18 +82,12 @@ export class EnemyProjectile extends Phaser.GameObjects.Container {
         );
     }
 
-    private onPlayerHit(projectile: any, player: any) {
+    private onPlayerHit(_projectile: any, player: any) {
         // Deal damage to player with wave-based scaling (stronger from wave 3+)
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
-        
-        let damageMultiplier = 1.0;
-        if (waveNumber >= 3) {
-            damageMultiplier = 1.0 + (waveNumber - 2) * 0.25; // +25% damage per wave after wave 2
-        }
-        damageMultiplier = Math.min(damageMultiplier, 4.0); // Cap at 4x damage
-        
+
+        const damageMultiplier = getWaveDamageMultiplier(waveNumber);
         const scaledDamage = Math.round(this.damage * damageMultiplier);
         player.takeDamage(scaledDamage);
         

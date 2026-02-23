@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { ENEMY_HP_SCALING, XP_WAVE_MULTIPLIERS, ENEMY_DETECTION_RADIUS, DESPAWN_TIME, DESPAWN_DISTANCE, getWaveDamageMultiplier } from '../GameConstants';
+import { GameSceneInterface } from '../types/GameSceneInterface';
+import { XPOrb } from './XPOrb';
 
 export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected sprite!: Phaser.GameObjects.Rectangle;
@@ -13,6 +16,16 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected isBoss: boolean = false;
     protected xpBossMultiplier: number = 1;
     private highlight!: Phaser.GameObjects.Graphics;
+
+    // Elite system
+    protected isElite: boolean = false;
+    protected eliteModifier: string | null = null;
+    private eliteBorder: Phaser.GameObjects.Graphics | null = null;
+    private regenTimer: number = 0;
+
+    protected abstract getEnemyColor(): number;
+    protected customUpdate(_time: number, _delta: number): void {}
+
     private lifetime: number = 0;
     private isBleeding: boolean = false;
     private bleedTimer: number = 0;
@@ -23,23 +36,26 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
-        
+
         // Calculate health based on player level (after subclass sets multiplier)
         this.calculateHealth();
-        
-        // Create enemy sprite
+
+        // Create enemy sprite (base body rectangle)
         this.sprite = scene.add.rectangle(0, 0, 24, 24, this.getEnemyColor());
         this.add(this.sprite);
-        
+
+        // Subclass visuals
+        this.createVisual();
+
         // Create health bar
         this.createHealthBar();
-        
+
         // Add physics body
         scene.physics.add.existing(this);
         this.setupHitbox();
-        
+
         scene.add.existing(this);
-        
+
         // Setup collision with player
         this.setupPlayerCollision();
 
@@ -52,6 +68,17 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         this.highlight = scene.add.graphics();
         this.add(this.highlight);
         this.hideHighlight();
+    }
+
+    protected createVisual(): void {
+        // Base top-down: body outline ring + directional notch
+        const g = this.scene.add.graphics();
+        g.lineStyle(1.5, 0x000000, 0.4);
+        g.strokeCircle(0, 0, 10);
+        // Directional notch (front = up)
+        g.fillStyle(0xffffff, 0.4);
+        g.fillTriangle(-3, -8, 0, -13, 3, -8);
+        this.add(g);
     }
 
     protected setupHitbox() {
@@ -82,19 +109,10 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     protected calculateHealth() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
-        
-        // HP scaling map based on wave number (increased difficulty from wave 3+)
-        const hpScalingMap: { [key: number]: number } = {
-            1: 15, 2: 100, 3: 300, 4: 800, 5: 2000,
-            6: 4000, 7: 8000, 8: 16000, 9: 32000, 10: 64000,
-            11: 128000, 12: 256000, 13: 512000, 14: 1024000, 15: 2048000,
-        };
-        
-        // Get base HP for current wave
-        const baseHp = hpScalingMap[waveNumber] || hpScalingMap[20] * (1 + (waveNumber - 20) * 0.2);
+
+        const baseHp = ENEMY_HP_SCALING[waveNumber] || ENEMY_HP_SCALING[15] * (1 + (waveNumber - 15) * 0.2);
         
         // Apply enemy type multiplier
         this.health = Math.floor(baseHp * this.baseHealthMultiplier);
@@ -112,11 +130,11 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         this.customUpdate(time, delta);
         this.checkDespawn(delta);
         this.updateBleed(delta);
+        this.updateElite(delta);
     }
 
     protected moveTowardsPlayer(delta: number) {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const player = gameScene.getPlayer();
         
         if (player && player.isAlive()) {
@@ -124,9 +142,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             const dy = player.getY() - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            // Only follow player if within detection radius
-            const detectionRadius = 800; // Increased to ensure spawned enemies can detect player
-            if (distance > 0 && (this.isBoss || distance <= detectionRadius)) {
+            if (distance > 0 && (this.isBoss || distance <= ENEMY_DETECTION_RADIUS)) {
                 // Apply wave-based speed scaling (faster enemies from wave 3+)
                 const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
                 let speedMultiplier = 1.0;
@@ -135,7 +151,16 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
                 }
                 speedMultiplier = Math.min(speedMultiplier, 3.0); // Cap at 3x speed
                 
-                const speed = this.moveSpeed * speedMultiplier * (delta / 1000);
+                // Check slow pool
+                let slowMultiplier = 1.0;
+                try {
+                    const obstacleManager = gameScene.getObstacleManager();
+                    if (obstacleManager && obstacleManager.isInSlowPool(this.x, this.y)) {
+                        slowMultiplier = 0.5;
+                    }
+                } catch (_e) { /* obstacle manager not ready */ }
+
+                const speed = this.moveSpeed * speedMultiplier * slowMultiplier * (delta / 1000);
                 const moveX = (dx / distance) * speed;
                 const moveY = (dy / distance) * speed;
                 
@@ -152,15 +177,28 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         }
     }
 
+    private updateElite(delta: number) {
+        if (!this.isElite) return;
+
+        // Regen modifier: heal 1% HP/s
+        if (this.eliteModifier === 'regen') {
+            this.regenTimer += delta;
+            if (this.regenTimer >= 1000) {
+                this.health = Math.min(this.maxHealth, this.health + this.maxHealth * 0.01);
+                this.regenTimer -= 1000;
+            }
+        }
+
+        // Aura modifier: nearby enemies deal +25% damage (applied via damage getter)
+        // This is checked by other enemies in their onPlayerHit
+    }
+
     private checkDespawn(delta: number) {
         this.lifetime += delta;
 
-        const DESPAWN_TIME = 30000; // 30 seconds
-        const DESPAWN_DISTANCE = 1500;
-
         if (!this.isBoss && this.lifetime > DESPAWN_TIME) {
-            const scene = this.scene as any;
-            const player = scene.getPlayer();
+            const gameScene = this.scene as GameSceneInterface;
+            const player = gameScene.getPlayer();
             if (player) {
                 const distance = Phaser.Math.Distance.Between(this.x, this.y, player.getX(), player.getY());
                 if (distance > DESPAWN_DISTANCE) {
@@ -181,13 +219,12 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     protected setupPlayerCollision() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const player = gameScene.getPlayer();
-        
+
         if (player) {
             // Add collision with player
-            scene.physics.add.collider(
+            gameScene.physics.add.collider(
                 this,
                 player,
                 this.onPlayerHit,
@@ -199,19 +236,10 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
 
     protected onPlayerHit(enemy: any, player: any) {
         // Deal damage to player with wave-based scaling (stronger from wave 3+)
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
+        const gameScene = this.scene as GameSceneInterface;
         const waveNumber = gameScene.getEnemySpawner() ? gameScene.getEnemySpawner().getWaveNumber() : 1;
-        
-        let damageMultiplier = 1.0;
-        if (waveNumber >= 3) {
-            damageMultiplier = 1.0 + (waveNumber - 2) * 0.5; // +50% damage per wave after wave 2
-        } 
 
-        if (waveNumber >= 7) {
-            damageMultiplier = 3.0 + (waveNumber - 6) * 2; // +400% damage per wave after wave 6
-        }
-        
+        const damageMultiplier = getWaveDamageMultiplier(waveNumber);
         const scaledDamage = Math.round(this.damage * damageMultiplier);
         player.takeDamage(scaledDamage);
         
@@ -283,85 +311,66 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         });
     }
 
-    private showXPText(amount: number) {
-        const xpText = this.scene.add.text(this.x, this.y, `+${amount} XP`, {
-            fontSize: '14px',
-            color: '#00ff00',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        this.scene.tweens.add({
-            targets: xpText,
-            y: this.y - 50,
-            alpha: 0,
-            duration: 1500,
-            ease: 'Power1',
-            onComplete: () => {
-                xpText.destroy();
-            }
-        });
-    }
-
     public die() {
-        const scene = this.scene as Phaser.Scene;
-        const gameScene = scene as any;
-        
-        // --- XP Wave Bonus Logic ---
+        const gameScene = this.scene as GameSceneInterface;
+
         const enemySpawner = gameScene.getEnemySpawner();
         const waveNumber = enemySpawner ? enemySpawner.getWaveNumber() : 1;
 
-        // XP scaling map based on wave number
-        const xpWaveMultipliers: { [key: number]: number } = {
-            1: 1.0, 2: 1.05, 3: 1.1, 4: 1.15, 5: 1.2,
-            6: 1.25, 7: 1.3, 8: 1.35, 9: 1.4, 10: 1.45,
-            11: 1.5,
-        };
-
-        // Get the closest wave multiplier (or default to 1.0)
         let waveMultiplier = 1.0;
-        for (const wave in xpWaveMultipliers) {
+        for (const wave in XP_WAVE_MULTIPLIERS) {
             if (waveNumber >= parseInt(wave)) {
-                waveMultiplier = xpWaveMultipliers[wave];
+                waveMultiplier = XP_WAVE_MULTIPLIERS[wave];
             } else {
                 break;
             }
         }
 
-        const player = gameScene.getPlayer();
         const finalXP = Math.floor((this.xpValue * this.xpBossMultiplier) * waveMultiplier);
 
-        // Give XP to player
-        gameScene.addXP(finalXP);
-        
-        // Show XP text
-        this.showXPText(finalXP);
+        // Spawn XP orbs instead of giving XP directly
+        const orbCount = this.isBoss ? 8 : 3;
+        const xpPerOrb = Math.max(1, Math.floor(finalXP / orbCount));
+        for (let i = 0; i < orbCount; i++) {
+            new XPOrb(this.scene, this.x, this.y, xpPerOrb);
+        }
 
         // Notify enemy spawner of kill (for wave progression)
         if (enemySpawner) {
             enemySpawner.onEnemyKilled();
         }
-        
-        // Create death effect
-        this.createDeathEffect();
-        
+
+        // Effects manager: screen shake + kill streak
+        try {
+            const effectsManager = gameScene.getEffectsManager();
+            if (effectsManager) {
+                effectsManager.onEnemyKilled(this.isBoss);
+                effectsManager.createEnhancedDeathEffect(this.x, this.y, this.getEnemyColor(), this.isBoss);
+            }
+        } catch (_e) { /* effects manager not ready */ }
+
+        // Elite enemies: 30% chance to drop item (not guaranteed)
+        if (this.isElite && Math.random() < 0.3) {
+            try {
+                gameScene.spawnItemAt(this.x, this.y);
+            } catch (_e) { /* spawn not ready */ }
+        }
+
         // Clean up bleeding effect
         this.removeBleedEffect();
-        
+
         // Destroy enemy
         this.destroy();
     }
 
     protected createDeathEffect() {
-        // Create explosion effect
-        for (let i = 0; i < 5; i++) {
+        // Fallback if EffectsManager not available
+        for (let i = 0; i < 8; i++) {
             const particle = this.scene.add.rectangle(
                 this.x + (Math.random() - 0.5) * 20,
                 this.y + (Math.random() - 0.5) * 20,
-                4,
-                4,
-                0xffaa00
+                4, 4, this.getEnemyColor()
             );
-            
             this.scene.tweens.add({
                 targets: particle,
                 alpha: 0,
@@ -461,6 +470,40 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
             this.bleedEffect.destroy();
             this.bleedEffect = null;
         }
+    }
+
+    public makeElite() {
+        this.isElite = true;
+        this.maxHealth *= 3;
+        this.health = this.maxHealth;
+        this.damage = Math.floor(this.damage * 1.5);
+        this.moveSpeed *= 1.2;
+        this.xpValue *= 2;
+
+        // Random modifier
+        const modifiers = ['fast', 'regen', 'aura'];
+        this.eliteModifier = modifiers[Math.floor(Math.random() * modifiers.length)];
+
+        if (this.eliteModifier === 'fast') {
+            this.moveSpeed *= 1.5;
+        }
+
+        // Gold border visual
+        this.eliteBorder = this.scene.add.graphics();
+        this.eliteBorder.lineStyle(2, 0xFFD700, 0.8);
+        this.eliteBorder.strokeRect(-14, -14, 28, 28);
+        this.add(this.eliteBorder);
+
+        // Slightly bigger
+        this.setScale((this.scaleX || 1) * 1.3);
+    }
+
+    public isEliteEnemy(): boolean {
+        return this.isElite;
+    }
+
+    public getEliteModifier(): string | null {
+        return this.eliteModifier;
     }
 
     // Getters
