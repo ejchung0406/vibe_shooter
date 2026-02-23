@@ -26,7 +26,8 @@ export class WaterPool extends Phaser.GameObjects.Container {
         // Physics — static body for collision
         scene.physics.add.existing(this, true); // true = static
         const body = this.body as Phaser.Physics.Arcade.StaticBody;
-        body.setCircle(this.radius, -this.radius, -this.radius);
+        body.setCircle(this.radius);
+        body.updateFromGameObject();
 
         scene.add.existing(this);
         this.setDepth(-500);

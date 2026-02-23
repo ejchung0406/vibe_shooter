@@ -33,8 +33,8 @@ export class BuffShrine extends Phaser.GameObjects.Container {
         scene.physics.add.existing(this, true); // Static body
 
         const body = this.body as Phaser.Physics.Arcade.StaticBody;
-        body.setSize(40, 40);
-        body.setOffset(-20, -20);
+        body.setCircle(20);
+        body.updateFromGameObject();
 
         // Player overlap
         const gameScene = scene as unknown as GameSceneInterface;

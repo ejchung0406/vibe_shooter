@@ -1806,7 +1806,19 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                 const dy = (tree.y - py) * scale;
                 if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
                     const r = Math.max(3, (tree.getRadius() || 60) * scale);
-                    this.minimapGraphics.fillStyle(0x1a5c1a, 0.6);
+                    this.minimapGraphics.fillStyle(0x0a3a0a, 0.8);
+                    this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, r);
+                }
+            });
+
+            // Draw slow pools as purple circles
+            this.obstacleManager.getSlowPools().getChildren().forEach((pool: any) => {
+                if (!pool.active) return;
+                const dx = (pool.x - px) * scale;
+                const dy = (pool.y - py) * scale;
+                if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                    const r = Math.max(3, (pool.getRadius ? pool.getRadius() : 80) * scale);
+                    this.minimapGraphics.fillStyle(0x9933cc, 0.5);
                     this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, r);
                 }
             });
@@ -1869,6 +1881,17 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                 }
             });
         }
+
+        // Draw pets as light green dots
+        this.pets.getChildren().forEach((pet: any) => {
+            if (!pet.active) return;
+            const dx = (pet.x - px) * scale;
+            const dy = (pet.y - py) * scale;
+            if (Math.abs(dx) < halfSize && Math.abs(dy) < halfSize) {
+                this.minimapGraphics.fillStyle(0x88ff88, 0.9);
+                this.minimapGraphics.fillCircle(centerX + dx, centerY + dy, 3);
+            }
+        });
 
         // Draw player as green dot in center (size 5)
         this.minimapGraphics.fillStyle(0x00ff00, 1);

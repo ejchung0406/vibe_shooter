@@ -16,7 +16,8 @@ export class TreeCluster extends Phaser.GameObjects.Container {
         // Physics — static body for collision
         scene.physics.add.existing(this, true); // true = static
         const body = this.body as Phaser.Physics.Arcade.StaticBody;
-        body.setCircle(this.radius, -this.radius, -this.radius);
+        body.setCircle(this.radius);
+        body.updateFromGameObject();
 
         scene.add.existing(this);
         this.setDepth(-400);
@@ -25,11 +26,11 @@ export class TreeCluster extends Phaser.GameObjects.Container {
     private drawTrees() {
         this.treeGraphics.clear();
 
-        // Main canopy
-        this.treeGraphics.fillStyle(0x1a5c1a, 0.7);
+        // Main canopy — dark forest green
+        this.treeGraphics.fillStyle(0x0e3a0e, 0.85);
         this.treeGraphics.fillCircle(0, 0, this.radius);
 
-        // Lighter leaf patches
+        // Slightly lighter leaf patches
         const patches = 4 + Math.floor(Math.random() * 3);
         for (let i = 0; i < patches; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -37,7 +38,7 @@ export class TreeCluster extends Phaser.GameObjects.Container {
             const px = Math.cos(angle) * dist;
             const py = Math.sin(angle) * dist;
             const r = this.radius * (0.2 + Math.random() * 0.25);
-            this.treeGraphics.fillStyle(0x2a7a2a, 0.5);
+            this.treeGraphics.fillStyle(0x1a4c1a, 0.5);
             this.treeGraphics.fillCircle(px, py, r);
         }
 
@@ -48,12 +49,12 @@ export class TreeCluster extends Phaser.GameObjects.Container {
             const dist = Math.random() * this.radius * 0.4;
             const px = Math.cos(angle) * dist;
             const py = Math.sin(angle) * dist;
-            this.treeGraphics.fillStyle(0x5a3a1a, 0.6);
-            this.treeGraphics.fillCircle(px, py, 4);
+            this.treeGraphics.fillStyle(0x3a2510, 0.7);
+            this.treeGraphics.fillCircle(px, py, 5);
         }
 
         // Outline
-        this.treeGraphics.lineStyle(1.5, 0x0d3d0d, 0.5);
+        this.treeGraphics.lineStyle(2, 0x082808, 0.7);
         this.treeGraphics.strokeCircle(0, 0, this.radius);
     }
 
