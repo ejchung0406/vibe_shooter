@@ -54,9 +54,34 @@ export class StartScene extends Phaser.Scene {
             startRect.setFillStyle(0x00ff88);
         });
 
+        // Difficulty toggle
+        let difficulty: 'easy' | 'hard' = 'hard';
+        const diffRect = this.add.rectangle(0, 0, 160, 40, 0x1a1a2e);
+        diffRect.setStrokeStyle(2, 0x00ff88);
+        const diffText = this.add.text(0, 0, t('start.hard'), {
+            fontSize: '20px',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#00ff88',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        const diffButton = this.add.container(screenWidth / 2 + 190, screenHeight * 0.35, [diffRect, diffText]).setDepth(1002);
+        diffButton.setInteractive(new Phaser.Geom.Rectangle(-80, -20, 160, 40), Phaser.Geom.Rectangle.Contains);
+        diffButton.on('pointerover', () => {
+            diffButton.setScale(1.1);
+            diffRect.setFillStyle(0x2a2a3e);
+        });
+        diffButton.on('pointerout', () => {
+            diffButton.setScale(1);
+            diffRect.setFillStyle(0x1a1a2e);
+        });
+        diffButton.on('pointerdown', () => {
+            difficulty = difficulty === 'hard' ? 'easy' : 'hard';
+            diffText.setText(difficulty === 'hard' ? t('start.hard') : t('start.easy'));
+        });
+
         // Start game on click
         startButton.on('pointerdown', () => {
-            this.scene.start('CharacterSelectionScene');
+            this.scene.start('CharacterSelectionScene', { difficulty });
         });
 
         // Tutorial button

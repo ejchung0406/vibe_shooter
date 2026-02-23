@@ -7,6 +7,8 @@ export const ko: Record<string, string> = {
     'start.controls_text': 'WASD - 이동\n우클릭 - 공격\nQ/E/R/F - 스킬\nShift - 대시\nESC - 일시정지',
     'start.description': '적의 웨이브를 생존하고, 스킬과 업그레이드를 해제하고, 보스를 처치해 강해지세요!',
     'start.author': '제작: 의준',
+    'start.easy': '쉬움',
+    'start.hard': '어려움',
 
     // CharacterSelectionScene
     'charsel.title': '캐릭터 선택',
@@ -339,6 +341,8 @@ export const ko: Record<string, string> = {
     'upgrade.mage_teleport_lightning.desc': '순간이동 시 도착 지점에서 체인 라이트닝 발동',
     'upgrade.mage_attack_lightning.name': '정전기 방출',
     'upgrade.mage_attack_lightning.desc': '평타 적중 시 체인 라이트닝 발동',
+    'upgrade.mage_shield_explosion.name': '마력 폭발',
+    'upgrade.mage_shield_explosion.desc': '쉴드 발동 시 주변 적에게 공격력 150% 폭발 데미지',
 
     // Item names & descriptions
     'item.basic_sword.name': '기본 검',

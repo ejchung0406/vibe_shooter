@@ -94,7 +94,7 @@ export class EffectsManager {
     }
 
     public createEnhancedDeathEffect(x: number, y: number, color: number, isBoss: boolean) {
-        const particleCount = isBoss ? 40 : 10;
+        const particleCount = isBoss ? 20 : 5;
         const radius = isBoss ? 60 : 20;
 
         // White flash

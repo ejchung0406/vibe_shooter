@@ -35,6 +35,8 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     private synergyManager!: SynergyManager;
     private tooltip!: Phaser.GameObjects.Container;
     private character: string = 'ranged';
+    private difficulty: string = 'hard';
+    private minimapFrameCounter: number = 0;
 
     // Game state
     private gameTime: number = 0;
@@ -96,7 +98,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         super({ key: 'GameScene' });
     }
 
-    init(data: { character: string }) {
+    init(data: { character: string; difficulty?: string }) {
         // Reset game state
         this.gameTime = 0;
         this.playerLevel = 1;
@@ -108,8 +110,9 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         this.highestWave = 1;
         this.itemsCollected = 0;
 
-        // Set character type
+        // Set character type and difficulty
         this.character = data.character || 'ranged';
+        this.difficulty = data.difficulty || 'hard';
     }
 
     create() {
@@ -247,7 +250,10 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         this.effectsManager.update(delta);
         this.obstacleManager.update(delta);
         this.updateStreakDisplay();
-        this.updateMinimap();
+        this.minimapFrameCounter++;
+        if (this.minimapFrameCounter % 3 === 0) {
+            this.updateMinimap();
+        }
     }
 
     public onBossDefeated() {
@@ -876,8 +882,8 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                             targets: popup,
                             alpha: 0,
                             y: popup.y - 50,
-                            duration: 2000,
-                            delay: 2000, // Wait 2 seconds before fading
+                            duration: 1400,
+                            delay: 1400,
                             ease: 'Power2',
                             onComplete: () => {
                                 popup.destroy();
@@ -935,8 +941,8 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
                             targets: popup,
                             alpha: 0,
                             y: popup.y - 50,
-                            duration: 2000,
-                            delay: 1500,
+                            duration: 1400,
+                            delay: 1050,
                             ease: 'Power2',
                             onComplete: () => popup.destroy()
                         });
@@ -1136,6 +1142,10 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
             const item = new Item(this, x, y, itemData);
             this.addItem(item);
         }
+    }
+
+    public getDifficulty(): string {
+        return this.difficulty;
     }
 
     public getGameTime() {

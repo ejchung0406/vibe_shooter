@@ -2,8 +2,14 @@ import Phaser from 'phaser';
 import { t } from '../i18n/i18n';
 
 export class CharacterSelectionScene extends Phaser.Scene {
+    private difficulty: string = 'hard';
+
     constructor() {
         super({ key: 'CharacterSelectionScene' });
+    }
+
+    init(data: { difficulty?: string }) {
+        this.difficulty = data?.difficulty || 'hard';
     }
 
     create() {
@@ -69,7 +75,7 @@ export class CharacterSelectionScene extends Phaser.Scene {
             });
 
             container.on('pointerdown', () => {
-                this.scene.start('GameScene', { character: char.key });
+                this.scene.start('GameScene', { character: char.key, difficulty: this.difficulty });
             });
         }
     }

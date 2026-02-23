@@ -7,6 +7,8 @@ export const en: Record<string, string> = {
     'start.controls_text': 'WASD - Move\nRight Click - Attack\nQ/E/R/F - Skills\nShift - Dash\nESC - Pause',
     'start.description': 'Survive waves of enemies, unlock skills and upgrades, defeat bosses to get stronger!',
     'start.author': 'Created by Euijun',
+    'start.easy': 'Easy',
+    'start.hard': 'Hard',
 
     // CharacterSelectionScene
     'charsel.title': 'Choose Your Character',
@@ -339,6 +341,8 @@ export const en: Record<string, string> = {
     'upgrade.mage_teleport_lightning.desc': 'Teleporting triggers Chain Lightning at your destination',
     'upgrade.mage_attack_lightning.name': 'Static Discharge',
     'upgrade.mage_attack_lightning.desc': 'Basic attacks trigger Chain Lightning on hit',
+    'upgrade.mage_shield_explosion.name': 'Arcane Detonation',
+    'upgrade.mage_shield_explosion.desc': 'Shield activation explodes, dealing 150% ATK damage to nearby enemies',
 
     // Item names & descriptions
     'item.basic_sword.name': 'Basic Sword',

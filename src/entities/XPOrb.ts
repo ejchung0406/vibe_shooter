@@ -57,6 +57,19 @@ export class XPOrb extends Phaser.GameObjects.Container {
         this.on('destroy', () => {
             scene.events.off('update', this.updateHandler);
         });
+
+        // Auto-despawn after 15 seconds to prevent late-game lag
+        scene.time.delayedCall(15000, () => {
+            if (!this.active) return;
+            scene.tweens.add({
+                targets: this,
+                alpha: 0,
+                duration: 500,
+                onComplete: () => {
+                    if (this.active) this.destroy();
+                }
+            });
+        });
     }
 
     private magnetUpdate() {

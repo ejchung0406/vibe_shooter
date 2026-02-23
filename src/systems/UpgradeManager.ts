@@ -1151,6 +1151,22 @@ export class UpgradeManager {
                         player.setAttackCastsQ(true);
                     }
                 }
+            },
+
+            // Shield explosion
+            {
+                id: "mage_shield_explosion",
+                name: "Arcane Detonation",
+                description: "Shield activation explodes, dealing 150% ATK damage to nearby enemies",
+                rarity: "epic",
+                dependencies: ["e_cooldown_1"],
+                requiredSkill: 'E',
+                character: 'mage',
+                effect: (player: BasePlayer) => {
+                    if (player instanceof MagePlayer) {
+                        player.setShieldExplodes(true);
+                    }
+                }
             }
         ];
     }

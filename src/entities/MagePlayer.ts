@@ -27,6 +27,7 @@ export class MagePlayer extends BasePlayer {
     protected manaCostReduction: number = 0; // 0-1 percentage
     protected teleportCastsQ: boolean = false;
     protected attackCastsQ: boolean = false;
+    protected shieldExplodes: boolean = false;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -483,6 +484,51 @@ export class MagePlayer extends BasePlayer {
         if (this.eSkillHeals) {
             this.heal(this.maxHealth * 0.1);
         }
+        if (this.shieldExplodes) {
+            this.shieldExplosion();
+        }
+    }
+
+    private shieldExplosion() {
+        const gameScene = this.scene as GameSceneInterface;
+        const explosionRadius = 200;
+        const baseDamage = this.getAttackDamage() * 1.5 * this.spellAmplification;
+
+        // Visual: expanding purple ring
+        const ring = this.scene.add.circle(this.x, this.y, 20, 0x9966EE, 0);
+        ring.setStrokeStyle(4, 0xCC88FF, 0.9);
+        this.scene.tweens.add({
+            targets: ring,
+            scaleX: explosionRadius / 20,
+            scaleY: explosionRadius / 20,
+            alpha: 0,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => ring.destroy()
+        });
+
+        // Flash at center
+        const flash = this.scene.add.circle(this.x, this.y, 30, 0xCC88FF, 0.6);
+        this.scene.tweens.add({
+            targets: flash,
+            alpha: 0,
+            scaleX: 2,
+            scaleY: 2,
+            duration: 250,
+            onComplete: () => flash.destroy()
+        });
+
+        // Damage all enemies in radius
+        const enemies = gameScene.getEnemies().getChildren();
+        for (const enemy of enemies) {
+            const e = enemy as any;
+            if (!e.active) continue;
+            const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y);
+            if (dist <= explosionRadius) {
+                const { damage, isCritical } = this.calculateDamage(baseDamage);
+                e.takeDamage(damage, isCritical);
+            }
+        }
     }
 
     public useRSkill(): void {
@@ -670,6 +716,7 @@ export class MagePlayer extends BasePlayer {
         this.manaCostReduction = 0;
         this.teleportCastsQ = false;
         this.attackCastsQ = false;
+        this.shieldExplodes = false;
     }
 
     // Mage-specific upgrade methods
@@ -729,6 +776,10 @@ export class MagePlayer extends BasePlayer {
 
     public setAttackCastsQ(value: boolean) {
         this.attackCastsQ = value;
+    }
+
+    public setShieldExplodes(value: boolean) {
+        this.shieldExplodes = value;
     }
 
     public hasAttackCastsQ(): boolean {

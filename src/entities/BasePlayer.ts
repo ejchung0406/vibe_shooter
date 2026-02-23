@@ -68,7 +68,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     protected hasAegis: boolean = false;
     protected healthRegen: number = 0;
     protected healthRegenTimer: number = 0;
-    protected xpMagnetRange: number = 0; // 0 = disabled
+    protected xpMagnetRange: number = 100;
 
     // Mana system (used by MagePlayer, stubs for others)
     protected mana: number = 0;
@@ -681,7 +681,13 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         
         // Apply armor damage reduction using logarithmic formula
         const damageReduction = this.getDamageReduction(); // Percentage reduction
-        const actualDamage = Math.max(1, Math.round(damage * (1 - damageReduction / 100))); // Minimum 1 damage
+        let actualDamage = Math.max(1, Math.round(damage * (1 - damageReduction / 100))); // Minimum 1 damage
+
+        // Easy mode: halve incoming damage
+        const gameScene = this.scene as GameSceneInterface;
+        if (gameScene.getDifficulty() === 'easy') {
+            actualDamage = Math.max(1, Math.round(actualDamage * 0.5));
+        }
         
         this.health -= actualDamage;
         this.isInvulnerable = true;
@@ -880,8 +886,8 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
             upgradeManager.reapplyUpgrades(this);
         }
 
-        // Ensure maxHealth never goes below 1
-        this.maxHealth = Math.max(1, this.maxHealth);
+        // Ensure maxHealth never goes below 50 (prevents cursed items from causing instant death)
+        this.maxHealth = Math.max(50, this.maxHealth);
         if (this.health > this.maxHealth) {
             this.health = this.maxHealth;
         }

@@ -27,7 +27,7 @@ export const DESPAWN_TIME = 30000;
 export const DESPAWN_DISTANCE = 1500;
 
 export function getWaveDamageMultiplier(waveNumber: number): number {
-    if (waveNumber >= 7) return 3.0 + (waveNumber - 6) * 2;
-    if (waveNumber >= 3) return 1.0 + (waveNumber - 2) * 0.5;
+    if (waveNumber >= 7) return 3.0 + (waveNumber - 6) * 0.5;
+    if (waveNumber >= 3) return 1.0 + (waveNumber - 2) * 0.4;
     return 1.0;
 }

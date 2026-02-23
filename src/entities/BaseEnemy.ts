@@ -34,6 +34,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     private bleedTickTimer: number = 0;
     private bleedTickInterval: number = 500; // 0.5 seconds
     private bleedEffect: Phaser.GameObjects.Graphics | null = null;
+    private lastDamageTextTime: number = 0;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);
@@ -321,6 +322,11 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
         // Capture scene reference before enemy might be destroyed
         const scene = this.scene;
         if (!scene) return;
+
+        // Throttle non-crit damage text to reduce lag
+        const now = scene.time.now;
+        if (!isCritical && now - this.lastDamageTextTime < 150) return;
+        this.lastDamageTextTime = now;
 
         const offsetX = (Math.random() - 0.5) * 20;
 

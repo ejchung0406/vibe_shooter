@@ -161,13 +161,13 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     },
     {
         id: 'cursed_blade', name: 'Cursed Blade',
-        description: '+200 Attack Damage, +20% Crit Chance, -200 Max HP. CURSED',
+        description: '+200 Attack Damage, +20% Crit Chance, -100 Max HP. CURSED',
         texture: 'cursed_blade_texture', rarity: 'legendary', category: 'cursed',
         isCursed: true,
         modifiers: [
             { stat: 'bonusAttackDamage', op: 'add', value: 200 },
             { stat: 'criticalStrikeChance', op: 'add', value: 0.2 },
-            { stat: 'maxHealth', op: 'add', value: -200 },
+            { stat: 'maxHealth', op: 'add', value: -100 },
         ],
     },
     {
