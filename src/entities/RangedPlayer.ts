@@ -3,6 +3,7 @@ import { Projectile } from './Projectile';
 import { ExplosiveProjectile } from './ExplosiveProjectile';
 import { QProjectile } from './QProjectile';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { SoundManager } from '../systems/SoundManager';
 
 export class RangedPlayer extends BasePlayer {
     constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -23,6 +24,7 @@ export class RangedPlayer extends BasePlayer {
     public attack(): void {
         if (this.isAttacking) return;
 
+        SoundManager.getInstance().play('playerShoot');
         this.isAttacking = true;
         this.attackPauseTimer = 0;
 
@@ -131,6 +133,7 @@ export class RangedPlayer extends BasePlayer {
     public useQSkill(): void {
         if (!this.qSkillUnlocked || this.getCooldownTimer('q') > 0) return;
 
+        SoundManager.getInstance().play('skillQ');
         this.startCooldown('q');
 
         const gameScene = this.scene as GameSceneInterface;
@@ -200,6 +203,7 @@ export class RangedPlayer extends BasePlayer {
     public useRSkill(): void {
         if (!this.rSkillUnlocked || this.getCooldownTimer('r') > 0) return;
 
+        SoundManager.getInstance().play('skillR');
         this.startCooldown('r');
 
         const gameScene = this.scene as GameSceneInterface;

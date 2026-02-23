@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ENEMY_HP_SCALING, XP_WAVE_MULTIPLIERS, ENEMY_DETECTION_RADIUS, DESPAWN_TIME, DESPAWN_DISTANCE, getWaveDamageMultiplier } from '../GameConstants';
 import { GameSceneInterface } from '../types/GameSceneInterface';
 import { XPOrb } from './XPOrb';
+import { SoundManager } from '../systems/SoundManager';
 
 export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     protected sprite!: Phaser.GameObjects.Rectangle;
@@ -270,6 +271,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     public takeDamage(damage: number, isCritical: boolean = false) {
+        SoundManager.getInstance().play('enemyHit');
         this.health -= damage;
 
         // Track damage dealt
@@ -392,6 +394,7 @@ export abstract class BaseEnemy extends Phaser.GameObjects.Container {
     }
 
     public die() {
+        SoundManager.getInstance().play('enemyDeath');
         const gameScene = this.scene as GameSceneInterface;
 
         const enemySpawner = gameScene.getEnemySpawner();

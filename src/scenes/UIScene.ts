@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UpgradeManager } from '../systems/UpgradeManager';
 import { t } from '../i18n/i18n';
+import { SoundManager } from '../systems/SoundManager';
 
 interface GameStats {
     gameTime: number;
@@ -368,6 +369,7 @@ export class UIScene extends Phaser.Scene {
 
             this.cardRerollUsed[cardIndex] = true;
             this.rerollsRemaining--;
+            SoundManager.getInstance().play('reroll');
 
             // Gray out button
             rerollBtnRect.setFillStyle(0x222222);

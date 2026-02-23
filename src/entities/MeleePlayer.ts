@@ -1,5 +1,6 @@
 import { BasePlayer } from './BasePlayer';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { SoundManager } from '../systems/SoundManager';
 
 export class MeleePlayer extends BasePlayer {
     protected attackRange: number = 200;
@@ -51,6 +52,7 @@ export class MeleePlayer extends BasePlayer {
     public attack(): void {
         if (this.isAttacking) return;
 
+        SoundManager.getInstance().play('meleeSwing');
         this.isAttacking = true;
         this.attackPauseTimer = 0;
         this.canMove = false;
@@ -76,6 +78,7 @@ export class MeleePlayer extends BasePlayer {
     public useQSkill(): void {
         if (!this.qSkillUnlocked || this.getCooldownTimer('q') > 0) return;
 
+        SoundManager.getInstance().play('skillQ');
         this.startCooldown('q');
         this.canMove = false;
         this.scene.time.delayedCall(300, () => {
@@ -137,6 +140,7 @@ export class MeleePlayer extends BasePlayer {
     public useRSkill(): void {
         if (!this.rSkillUnlocked || this.getCooldownTimer('r') > 0) return;
 
+        SoundManager.getInstance().play('skillR');
         this.startCooldown('r');
         this.canMove = false;
         this.scene.time.delayedCall(500, () => {
@@ -412,6 +416,7 @@ export class MeleePlayer extends BasePlayer {
     public useDashSkill() {
         if (!this.dashSkillUnlocked || this.getCooldownTimer('dash') > 0 || this.isDashing) return;
 
+        SoundManager.getInstance().play('dash');
         this.startCooldown('dash');
         this.isDashing = true;
         this.dashTimer = 0;

@@ -2,6 +2,7 @@ import { BasePlayer } from './BasePlayer';
 import { MageProjectile } from './MageProjectile';
 import { ExplosiveProjectile } from './ExplosiveProjectile';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { SoundManager } from '../systems/SoundManager';
 
 export class MagePlayer extends BasePlayer {
     // Mage-specific properties
@@ -158,6 +159,7 @@ export class MagePlayer extends BasePlayer {
         if (!this.dashSkillUnlocked || this.getCooldownTimer('dash') > 0 || this.isDashing) return;
         if (!this.canAffordMana(this.MANA_COST_TELEPORT)) return;
 
+        SoundManager.getInstance().play('dash');
         this.spendMana(this.MANA_COST_TELEPORT);
         this.startCooldown('dash');
 
@@ -239,6 +241,7 @@ export class MagePlayer extends BasePlayer {
     public attack(): void {
         if (this.isAttacking) return;
 
+        SoundManager.getInstance().play('mageSpell');
         this.isAttacking = true;
         this.attackPauseTimer = 0;
 
@@ -344,6 +347,7 @@ export class MagePlayer extends BasePlayer {
         if (!this.qSkillUnlocked || this.getCooldownTimer('q') > 0) return;
         if (!this.canAffordMana(this.MANA_COST_Q)) return;
 
+        SoundManager.getInstance().play('skillQ');
         const gameScene = this.scene as GameSceneInterface;
         const enemies = gameScene.getEnemies().getChildren();
 
@@ -471,6 +475,7 @@ export class MagePlayer extends BasePlayer {
         if (!this.eSkillUnlocked || this.getCooldownTimer('e') > 0 || this.shieldActive) return;
         if (!this.canAffordMana(this.MANA_COST_E)) return;
 
+        SoundManager.getInstance().play('shieldActivate');
         this.spendMana(this.MANA_COST_E);
         // Call the base implementation (which will activate shield, start cooldown, etc.)
         this.startCooldown('e');
@@ -484,6 +489,7 @@ export class MagePlayer extends BasePlayer {
         if (!this.rSkillUnlocked || this.getCooldownTimer('r') > 0) return;
         if (!this.canAffordMana(this.MANA_COST_R)) return;
 
+        SoundManager.getInstance().play('skillR');
         this.spendMana(this.MANA_COST_R);
         this.startCooldown('r');
 

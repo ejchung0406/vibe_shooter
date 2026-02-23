@@ -17,6 +17,7 @@ import { SynergyManager } from '../systems/SynergyManager';
 import { GameSceneInterface } from '../types/GameSceneInterface';
 import { MAP_SIZE } from '../GameConstants';
 import { t } from '../i18n/i18n';
+import { SoundManager } from '../systems/SoundManager';
 
 export class GameScene extends Phaser.Scene implements GameSceneInterface {
     private player!: BasePlayer;
@@ -295,10 +296,12 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         this.itemsCollected++;
         const leveledUp = player.addItem(itemData);
         if (leveledUp) {
+            SoundManager.getInstance().play('itemLevelUp');
             // Find the leveled-up item for current level
             const existing = player.getItems().find((i: ItemData) => i.id === itemData.id);
             this.showItemLevelUpPopup(existing || itemData);
         } else {
+            SoundManager.getInstance().play('itemPickup');
             this.showItemCollectedPopup(itemData);
         }
         this.updateItemUI();
@@ -306,6 +309,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     public showBossClearedMessage() {
+        SoundManager.getInstance().play('bossDefeat');
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
@@ -1022,6 +1026,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     };
 
     private levelUp() {
+        SoundManager.getInstance().play('levelUp');
         this.hideTooltip();
         this.playerLevel++;
         this.playerXP -= this.xpToNextLevel;
@@ -1040,12 +1045,12 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
         // Unlock skills
         this.player.unlockSkills(this.playerLevel);
         
-        // Trigger level up UI (1 reroll per level-up)
+        // Trigger level up UI (each card can reroll once = 3 total)
         this.scene.launch('UIScene', {
             level: this.playerLevel,
             upgradeManager: this.upgradeManager,
             isGameOver: false,
-            rerollsRemaining: 1,
+            rerollsRemaining: 3,
         });
         
         // Pause the game

@@ -15,6 +15,7 @@ import { PhaseShifterBoss } from '../entities/bosses/PhaseShifterBoss';
 import { TeleporterBoss } from '../entities/bosses/TeleporterBoss';
 import { FinalBoss } from '../entities/bosses/FinalBoss';
 import { SPAWN_DISTANCE, MAX_ENEMIES_ON_SCREEN, MAP_SIZE } from '../GameConstants';
+import { SoundManager } from './SoundManager';
 
 export class EnemySpawner {
     private scene: GameScene;
@@ -267,6 +268,7 @@ export class EnemySpawner {
     }
 
     private showBossAnnouncement() {
+        SoundManager.getInstance().play('bossSpawn');
         const announcement = this.scene.add.text(this.scene.scale.width / 2, 150, t('boss.incoming'), {
             fontSize: '32px',
             color: '#ff0000',

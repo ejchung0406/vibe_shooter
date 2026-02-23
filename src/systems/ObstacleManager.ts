@@ -129,11 +129,11 @@ export class ObstacleManager {
         this.scene.physics.add.collider(this.scene.getEnemies(), tree);
 
         // Projectiles destroyed on contact with trees
-        this.scene.physics.add.overlap(this.scene.getProjectiles(), tree, (_tree: any, proj: any) => {
-            proj.destroy();
+        this.scene.physics.add.overlap(this.scene.getProjectiles(), tree, (proj: any, _tree: any) => {
+            if (proj && proj.active) proj.destroy();
         });
-        this.scene.physics.add.overlap(this.scene.getEnemyProjectiles(), tree, (_tree: any, proj: any) => {
-            proj.destroy();
+        this.scene.physics.add.overlap(this.scene.getEnemyProjectiles(), tree, (proj: any, _tree: any) => {
+            if (proj && proj.active) proj.destroy();
         });
     }
 

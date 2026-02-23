@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameSceneInterface } from '../../types/GameSceneInterface';
+import { SoundManager } from '../../systems/SoundManager';
 
 export class BuffShrine extends Phaser.GameObjects.Container {
     private shrineSprite: Phaser.GameObjects.Rectangle;
@@ -65,6 +66,7 @@ export class BuffShrine extends Phaser.GameObjects.Container {
     private onPlayerTouch(_player: any, _shrine: any) {
         if (this.isUsed) return;
         this.isUsed = true;
+        SoundManager.getInstance().play('shrineActivate');
 
         const gameScene = this.scene as unknown as GameSceneInterface;
         const player = gameScene.getPlayer();

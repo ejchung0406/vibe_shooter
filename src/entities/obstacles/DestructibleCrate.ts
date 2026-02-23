@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameSceneInterface } from '../../types/GameSceneInterface';
 import { Item } from '../Item';
 import { XPOrb } from '../XPOrb';
+import { SoundManager } from '../../systems/SoundManager';
 
 export class DestructibleCrate extends Phaser.GameObjects.Container {
     private body_: Phaser.GameObjects.Rectangle;
@@ -102,6 +103,7 @@ export class DestructibleCrate extends Phaser.GameObjects.Container {
     }
 
     private applyHit() {
+        SoundManager.getInstance().play('crateHit');
         this.hitsRemaining--;
 
         // Visual shake - stronger shake on each hit
@@ -138,6 +140,7 @@ export class DestructibleCrate extends Phaser.GameObjects.Container {
     }
 
     private onDestroyed() {
+        SoundManager.getInstance().play('crateBreak');
         const gameScene = this.scene as GameSceneInterface;
 
         // Drop a common-rarity item from chests

@@ -4,6 +4,7 @@ import { GameScene } from '../scenes/GameScene';
 import { ItemData } from './Item';
 import { PlayerStatName, StatOp } from '../data/PlayerStats';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { SoundManager } from '../systems/SoundManager';
 
 export const SKILL_UNLOCK_LEVELS = {
     Q: 2,
@@ -316,6 +317,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     public useESkill(): void {
         if (!this.eSkillUnlocked || this.getCooldownTimer('e') > 0 || this.shieldActive) return;
 
+        SoundManager.getInstance().play('shieldActivate');
         this.startCooldown('e');
         this.activateShield();
 
@@ -669,6 +671,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     public takeDamage(damage: number) {
         if (this.isInvulnerable) return;
 
+        SoundManager.getInstance().play('playerHit');
         if (this.shieldActive) {
             if (this.shieldAbsorbs) {
                 this.heal(damage * 0.5);
@@ -700,6 +703,10 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
         const healAmount = Math.min(amount, this.maxHealth - this.health);
         this.health += healAmount;
 
+        // Only play heal sound for significant heals (not tiny regen ticks)
+        if (healAmount >= this.maxHealth * 0.05) {
+            SoundManager.getInstance().play('heal');
+        }
         // Show healing text
         this.showHealText(healAmount);
     }
@@ -1123,6 +1130,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
     public useDashSkill() {
         if (!this.dashSkillUnlocked || this.getCooldownTimer('dash') > 0 || this.isDashing) return;
 
+        SoundManager.getInstance().play('dash');
         this.startCooldown('dash');
         this.isDashing = true;
         this.dashTimer = 0;
