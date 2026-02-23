@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameSceneInterface } from '../types/GameSceneInterface';
+import { SoundManager } from '../systems/SoundManager';
 
 export class XPOrb extends Phaser.GameObjects.Container {
     private xpAmount: number;
@@ -80,6 +81,7 @@ export class XPOrb extends Phaser.GameObjects.Container {
     }
 
     private onPickup() {
+        SoundManager.getInstance().play('xpPickup');
         const gameScene = this.scene as unknown as GameSceneInterface;
         gameScene.addXP(this.xpAmount);
 

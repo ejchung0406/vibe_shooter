@@ -1120,6 +1120,7 @@ export abstract class BasePlayer extends Phaser.GameObjects.Container {
             return;
         }
 
+        SoundManager.getInstance().play('petSummon');
         this.startCooldown('f');
 
         const gameScene = this.scene as GameScene;

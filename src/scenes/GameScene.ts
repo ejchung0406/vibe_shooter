@@ -258,6 +258,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     private gameClear() {
+        SoundManager.getInstance().play('gameClear');
         this.scene.pause();
         this.scene.launch('UIScene', {
             level: this.playerLevel,
@@ -1058,6 +1059,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     public showSkillUnlockMessage(message: string) {
+        SoundManager.getInstance().play('skillUnlock');
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
@@ -1726,6 +1728,7 @@ export class GameScene extends Phaser.Scene implements GameSceneInterface {
     }
 
     public gameOver() {
+        SoundManager.getInstance().play('gameOver');
         this.hideTooltip();
         // Stop the game
         this.scene.pause();

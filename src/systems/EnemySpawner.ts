@@ -195,6 +195,7 @@ export class EnemySpawner {
     }
 
     private advanceWave() {
+        SoundManager.getInstance().play('waveStart');
         this.waveNumber++;
         this.enemiesKilledThisWave = 0;
 

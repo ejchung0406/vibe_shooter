@@ -46,6 +46,13 @@ export class SoundManager {
                 case 'crateBreak': this.crateBreak(ctx); break;
                 case 'shrineActivate': this.shrineActivate(ctx); break;
                 case 'reroll': this.reroll(ctx); break;
+                case 'xpPickup': this.xpPickup(ctx); break;
+                case 'upgradeSelect': this.upgradeSelect(ctx); break;
+                case 'gameOver': this.gameOverSound(ctx); break;
+                case 'gameClear': this.gameClear(ctx); break;
+                case 'skillUnlock': this.skillUnlock(ctx); break;
+                case 'petSummon': this.petSummon(ctx); break;
+                case 'waveStart': this.waveStart(ctx); break;
             }
         } catch (_e) { /* audio not available */ }
     }
@@ -248,6 +255,172 @@ export class SoundManager {
             osc.start(start);
             osc.stop(start + 0.3);
         });
+    }
+
+    /** Tiny blip — XP orb pickup */
+    private xpPickup(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, t);
+        osc.frequency.exponentialRampToValueAtTime(1600, t + 0.04);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(this.volume * 0.15, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.06);
+    }
+
+    /** Confirmation chime — upgrade select */
+    private upgradeSelect(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 880;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(this.volume * 0.4, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.2);
+        // Second higher note
+        const osc2 = ctx.createOscillator();
+        osc2.type = 'triangle';
+        osc2.frequency.value = 1320;
+        const gain2 = ctx.createGain();
+        gain2.gain.setValueAtTime(0, t + 0.05);
+        gain2.gain.linearRampToValueAtTime(this.volume * 0.35, t + 0.07);
+        gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        osc2.connect(gain2).connect(ctx.destination);
+        osc2.start(t + 0.05);
+        osc2.stop(t + 0.25);
+    }
+
+    /** Descending minor — game over */
+    private gameOverSound(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        const notes = [440, 415, 370, 330, 294]; // A4 Ab4 F#4 E4 D4
+        notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const gain = ctx.createGain();
+            const start = t + i * 0.2;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(this.volume * 0.4, start + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.5);
+        });
+    }
+
+    /** Grand victory — game clear */
+    private gameClear(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        // Triumphant major arpeggio
+        const notes = [523, 659, 784, 1047, 1319, 1568]; // C5 E5 G5 C6 E6 G6
+        notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            const gain = ctx.createGain();
+            const start = t + i * 0.1;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(this.volume * 0.45, start + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.6);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.6);
+        });
+        // Sustain chord at end
+        [1047, 1319, 1568].forEach(freq => {
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const gain = ctx.createGain();
+            const start = t + 0.6;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(this.volume * 0.25, start + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 1.2);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 1.2);
+        });
+    }
+
+    /** Power-up jingle — skill unlock */
+    private skillUnlock(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        const notes = [587, 784, 1047]; // D5 G5 C6
+        notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            const gain = ctx.createGain();
+            const start = t + i * 0.12;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(this.volume * 0.4, start + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.35);
+        });
+    }
+
+    /** Magical summon — pet spawn */
+    private petSummon(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        // Rising wobble
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, t);
+        osc.frequency.exponentialRampToValueAtTime(800, t + 0.3);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(this.volume * 0.3, t);
+        gain.gain.linearRampToValueAtTime(this.volume * 0.4, t + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.4);
+        // Pop at end
+        const pop = ctx.createOscillator();
+        pop.type = 'sine';
+        pop.frequency.value = 1200;
+        const popGain = ctx.createGain();
+        popGain.gain.setValueAtTime(0, t + 0.25);
+        popGain.gain.linearRampToValueAtTime(this.volume * 0.35, t + 0.27);
+        popGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        pop.connect(popGain).connect(ctx.destination);
+        pop.start(t + 0.25);
+        pop.stop(t + 0.4);
+    }
+
+    /** Drum hit — wave start */
+    private waveStart(ctx: AudioContext): void {
+        const t = ctx.currentTime;
+        // Low drum
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(100, t);
+        osc.frequency.exponentialRampToValueAtTime(50, t + 0.15);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(this.volume * 0.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.2);
+        // High accent
+        const acc = ctx.createOscillator();
+        acc.type = 'triangle';
+        acc.frequency.value = 660;
+        const accGain = ctx.createGain();
+        accGain.gain.setValueAtTime(this.volume * 0.3, t + 0.05);
+        accGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        acc.connect(accGain).connect(ctx.destination);
+        acc.start(t + 0.05);
+        acc.stop(t + 0.15);
     }
 
     /** Dice roll / shuffle — reroll */

@@ -423,6 +423,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     private selectUpgrade(upgrade: any) {
+        SoundManager.getInstance().play('upgradeSelect');
         // Apply the upgrade
         this.upgradeManager.applyUpgrade(upgrade);
 
